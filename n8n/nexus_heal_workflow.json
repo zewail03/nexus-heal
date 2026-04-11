@@ -1,0 +1,98 @@
+{
+  "name": "NEXUS-HEAL Alert Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "nexus-alert",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/analyze",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alert_id",
+              "value": "={{ $json.alert_id }}"
+            },
+            {
+              "name": "alert_text",
+              "value": "={{ $json.alert_text }}"
+            },
+            {
+              "name": "source",
+              "value": "n8n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-request",
+      "name": "Call NEXUS-HEAL API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=\ud83d\udea8 *NEXUS-HEAL Alert*\n\n*Type:* {{ $json.alert_type }}\n*Severity:* {{ $json.severity }}\n*Root Cause:* {{ $json.root_cause }}\n*Confidence:* {{ Math.round($json.confidence * 100) }}%\n\n*Diagnosis:*\n{{ $json.diagnosis }}\n\n*Fix Plan:*\n{{ $json.fix_plan.join('\\n') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call NEXUS-HEAL API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call NEXUS-HEAL API": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-04-11T00:00:00.000Z",
+  "versionId": "1"
+}
