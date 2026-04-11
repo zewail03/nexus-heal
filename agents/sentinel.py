@@ -36,9 +36,17 @@ Respond in JSON only (no markdown, no extra text):
 {{"alert_type": "...", "severity": "...", "category": "...", "confidence": 0.0}}
 
 Rules:
-- confidence is a float between 0.0 and 1.0
+- confidence is a float between 0.0 and 1.0, calibrated as follows:
+  - 0.9-1.0: Alert clearly mentions exact keywords (e.g., "CPU 98%", "disk full", "SSL expired")
+  - 0.7-0.8: Alert strongly implies a type but uses indirect language
+  - 0.5-0.6: Alert is ambiguous, could be multiple types
+  - 0.3-0.4: Alert is vague with minimal detail
 - alert_type MUST be one of the listed types
 - severity MUST be one of: LOW, MEDIUM, HIGH, CRITICAL
+  - CRITICAL: service down, data loss risk, security breach
+  - HIGH: degraded performance, approaching limits
+  - MEDIUM: warning signs, not yet impacting users
+  - LOW: informational, minor issue
 - category MUST be one of: infrastructure, application, network, security"""
 
     response = llm.invoke(prompt)
