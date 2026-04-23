@@ -40,10 +40,12 @@ def maven_agent(state: NexusState) -> dict:
 ALERT: {state['alert_raw']}
 TYPE: {state['alert_type']}
 SEVERITY: {state['alert_severity']}
-RAG RETRIEVAL QUALITY: average similarity score = {avg_rag_score:.2f} (1.0 = perfect match, 0.5 = weak match)
 
 RELEVANT RUNBOOKS:
 {context}
+
+Base your diagnosis ONLY on the alert and the runbooks above. Do not mention
+similarity scores, retrieval quality, or any metadata — only facts from the runbooks.
 
 Based on the alert and the runbooks above, provide:
 1. Root cause (one sentence)

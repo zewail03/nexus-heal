@@ -1,0 +1,33 @@
+{
+  "num_sampled": 20,
+  "num_judged": 20,
+  "overall": {
+    "pct_grounded": 15.0,
+    "num_ungrounded": 17
+  },
+  "by_difficulty": {
+    "easy": {
+      "pct_grounded": 20.0,
+      "n": 5
+    },
+    "medium": {
+      "pct_grounded": 20.0,
+      "n": 5
+    },
+    "hard": {
+      "pct_grounded": 0.0,
+      "n": 5
+    },
+    "composite": {
+      "pct_grounded": 20.0,
+      "n": 5
+    }
+  },
+  "top_unsupported_claims": [
+    "the system is under heavy load, and the thread pool is likely exhausted, causing new requests to be queued",
+    "The average similarity score of 0.81 also suggests a strong match with known runbook patterns.",
+    "The average similarity score of 0.81 suggests a strong match with known runbook patterns."
+  ],
+  "wall_clock_seconds": 219.0,
+  "model": "llama-3.3-70b-versatile"
+}

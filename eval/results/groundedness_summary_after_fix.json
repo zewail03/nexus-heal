@@ -1,0 +1,33 @@
+{
+  "num_sampled": 20,
+  "num_judged": 17,
+  "overall": {
+    "pct_grounded": 58.82,
+    "num_ungrounded": 7
+  },
+  "by_difficulty": {
+    "easy": {
+      "pct_grounded": 100.0,
+      "n": 2
+    },
+    "medium": {
+      "pct_grounded": 40.0,
+      "n": 5
+    },
+    "hard": {
+      "pct_grounded": 20.0,
+      "n": 5
+    },
+    "composite": {
+      "pct_grounded": 100.0,
+      "n": 5
+    }
+  },
+  "top_unsupported_claims": [
+    "the specific claim not in context",
+    "the auto-renewal process may have failed or was never configured, leading to the certificate expiration.",
+    "a sudden spike in traffic"
+  ],
+  "wall_clock_seconds": 518.7,
+  "model": "llama-3.1-8b-instant"
+}

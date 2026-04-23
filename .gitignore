@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 venv/
 .claude/
+eval/_sweep_tmp/
+.pytest_cache/

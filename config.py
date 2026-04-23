@@ -5,7 +5,9 @@ load_dotenv()
 
 # --- LLM (Groq) ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-LLM_MODEL = "llama-3.3-70b-versatile"
+# Default model is llama-3.3-70b-versatile. Temporarily switchable via env for
+# cases where the 70B daily quota is exhausted (e.g. reliability re-runs).
+LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 LLM_TEMPERATURE = 0.1
 
 # --- Telegram ---

@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "description": "Hand-authored labeled queries for NEXUS-HEAL retrieval evaluation. 4 queries per runbook (10 runbooks x 4 = 40 queries). Difficulty levels: easy = direct keywords; medium = indirect language; hard = vague/ambiguous; composite = multiple symptoms, may cross-reference multiple runbooks.",
+    "ground_truth_format": "relevant_runbooks is a list of runbook filenames (e.g., 'runbook_cpu_spike.md'). Most queries have exactly one relevant runbook; composite queries may have two when symptoms legitimately overlap.",
+    "hard_queries_note": "Hard queries are INTENTIONALLY ADVERSARIAL. Several (notably Q03, Q07, Q15, Q19) share little or no domain vocabulary with the target runbook (e.g., Q07 — 'service unresponsive after a day, restart fixes temporarily' — has zero memory-related keywords but is labeled as memory_leak). These queries are designed to probe the ceiling of pure semantic retrieval: they demonstrate where lexical overlap disappears and where production systems would benefit from hybrid dense+BM25 retrieval or query rewriting. Do not relabel or drop them — the failures they surface are intentional evidence of informed design trade-offs."
+  },
+  "queries": [
+    {"id": "Q01", "query": "CPU usage at 98% on production api-gateway for 10 minutes, load average 45 on 8-core box", "alert_type": "cpu_spike", "difficulty": "easy", "relevant_runbooks": ["runbook_cpu_spike.md"]},
+    {"id": "Q02", "query": "htop shows one runaway python process pegging all cores, host unresponsive over SSH", "alert_type": "cpu_spike", "difficulty": "medium", "relevant_runbooks": ["runbook_cpu_spike.md"]},
+    {"id": "Q03", "query": "Application feels slow today, users complaining but nothing obvious in logs", "alert_type": "cpu_spike", "difficulty": "hard", "relevant_runbooks": ["runbook_cpu_spike.md"]},
+    {"id": "Q04", "query": "CPU spike to 95% coincides with GC storm on JVM service, OOM killer activated", "alert_type": "cpu_spike", "difficulty": "composite", "relevant_runbooks": ["runbook_cpu_spike.md", "runbook_memory_leak.md"]},
+
+    {"id": "Q05", "query": "Memory usage climbing steadily on payment-service pod, now 95% of 2Gi limit, OOMKilled twice today", "alert_type": "memory_leak", "difficulty": "easy", "relevant_runbooks": ["runbook_memory_leak.md"]},
+    {"id": "Q06", "query": "Container gets killed every few hours, Grafana shows sawtooth memory pattern", "alert_type": "memory_leak", "difficulty": "medium", "relevant_runbooks": ["runbook_memory_leak.md"]},
+    {"id": "Q07", "query": "Service becomes unresponsive after running for a day, a manual restart fixes it temporarily", "alert_type": "memory_leak", "difficulty": "hard", "relevant_runbooks": ["runbook_memory_leak.md"]},
+    {"id": "Q08", "query": "Node.js websocket handler leaking event listeners, RAM growing 500MB per hour, swap filling", "alert_type": "memory_leak", "difficulty": "composite", "relevant_runbooks": ["runbook_memory_leak.md"]},
+
+    {"id": "Q09", "query": "Disk usage 97% on /var/log volume, 'No space left on device' errors in app logs", "alert_type": "disk_full", "difficulty": "easy", "relevant_runbooks": ["runbook_disk_full.md"]},
+    {"id": "Q10", "query": "Application cannot write files, df -h shows 99% used on root partition", "alert_type": "disk_full", "difficulty": "medium", "relevant_runbooks": ["runbook_disk_full.md"]},
+    {"id": "Q11", "query": "Writes failing randomly even though df shows plenty of free space on the volume", "alert_type": "disk_full", "difficulty": "hard", "relevant_runbooks": ["runbook_disk_full.md"]},
+    {"id": "Q12", "query": "Docker pulls failing, /var/lib/docker at 95%, build cache ballooned on CI runner", "alert_type": "disk_full", "difficulty": "composite", "relevant_runbooks": ["runbook_disk_full.md"]},
+
+    {"id": "Q13", "query": "Database connection pool exhausted on primary PostgreSQL, 503 errors on /api/users endpoint", "alert_type": "db_connection", "difficulty": "easy", "relevant_runbooks": ["runbook_db_connection.md"]},
+    {"id": "Q14", "query": "Application returning 'too many connections' error from MySQL, backend threads stuck", "alert_type": "db_connection", "difficulty": "medium", "relevant_runbooks": ["runbook_db_connection.md"]},
+    {"id": "Q15", "query": "Intermittent 503s on checkout endpoint, DB itself looks healthy per dashboards", "alert_type": "db_connection", "difficulty": "hard", "relevant_runbooks": ["runbook_db_connection.md"]},
+    {"id": "Q16", "query": "HikariCP pool exhausted, idle connections not being released, ORM possibly leaking cursors", "alert_type": "db_connection", "difficulty": "composite", "relevant_runbooks": ["runbook_db_connection.md"]},
+
+    {"id": "Q17", "query": "p99 latency exceeded 2s SLA between service A and service B, traceroute shows slow hop", "alert_type": "network_latency", "difficulty": "easy", "relevant_runbooks": ["runbook_network_latency.md"]},
+    {"id": "Q18", "query": "Cross-AZ requests taking 10x longer than usual, mtr reports packet loss at intermediate hop", "alert_type": "network_latency", "difficulty": "medium", "relevant_runbooks": ["runbook_network_latency.md"]},
+    {"id": "Q19", "query": "Users complaining about slow app globally but server-side APM looks healthy", "alert_type": "network_latency", "difficulty": "hard", "relevant_runbooks": ["runbook_network_latency.md"]},
+    {"id": "Q20", "query": "DNS resolution taking 2 seconds per lookup, TCP retransmissions rising, MTU mismatch suspected", "alert_type": "network_latency", "difficulty": "composite", "relevant_runbooks": ["runbook_network_latency.md"]},
+
+    {"id": "Q21", "query": "SSL certificate expired on api.example.com, HTTPS handshake failing for all clients", "alert_type": "ssl_expired", "difficulty": "easy", "relevant_runbooks": ["runbook_ssl_expired.md"]},
+    {"id": "Q22", "query": "Browser showing 'Your connection is not private' warning on the prod domain", "alert_type": "ssl_expired", "difficulty": "medium", "relevant_runbooks": ["runbook_ssl_expired.md"]},
+    {"id": "Q23", "query": "Mobile clients cannot connect but desktop browsers work fine, chain validation issue suspected", "alert_type": "ssl_expired", "difficulty": "hard", "relevant_runbooks": ["runbook_ssl_expired.md"]},
+    {"id": "Q24", "query": "Let's Encrypt auto-renewal failed, cert expires in 48 hours, cert-manager pod crashlooping", "alert_type": "ssl_expired", "difficulty": "composite", "relevant_runbooks": ["runbook_ssl_expired.md", "runbook_pod_crash.md"]},
+
+    {"id": "Q25", "query": "API /users endpoint returning 504 Gateway Timeout, response times over 30 seconds", "alert_type": "api_timeout", "difficulty": "easy", "relevant_runbooks": ["runbook_api_timeout.md"]},
+    {"id": "Q26", "query": "Backend worker threads all busy, request queue growing, clients hitting timeouts", "alert_type": "api_timeout", "difficulty": "medium", "relevant_runbooks": ["runbook_api_timeout.md"]},
+    {"id": "Q27", "query": "Checkout endpoint intermittently slow during business hours, otherwise fast", "alert_type": "api_timeout", "difficulty": "hard", "relevant_runbooks": ["runbook_api_timeout.md"]},
+    {"id": "Q28", "query": "Missing index on users table caused 45s query times at peak, cascading 504s downstream", "alert_type": "api_timeout", "difficulty": "composite", "relevant_runbooks": ["runbook_api_timeout.md", "runbook_db_connection.md"]},
+
+    {"id": "Q29", "query": "payment-service pod in CrashLoopBackOff state on EKS cluster, restart count at 12", "alert_type": "pod_crash", "difficulty": "easy", "relevant_runbooks": ["runbook_pod_crash.md"]},
+    {"id": "Q30", "query": "Kubernetes pod keeps restarting, exit code 137 on every termination", "alert_type": "pod_crash", "difficulty": "medium", "relevant_runbooks": ["runbook_pod_crash.md"]},
+    {"id": "Q31", "query": "New deployment will not stabilize, readiness probe failing after rollout", "alert_type": "pod_crash", "difficulty": "hard", "relevant_runbooks": ["runbook_pod_crash.md"]},
+    {"id": "Q32", "query": "Container OOMKilled then CrashLoopBackOff after rollout, memory limit possibly too low", "alert_type": "pod_crash", "difficulty": "composite", "relevant_runbooks": ["runbook_pod_crash.md", "runbook_memory_leak.md"]},
+
+    {"id": "Q33", "query": "RabbitMQ queue depth at 50,000 messages, consumer lag growing, workers appear stuck", "alert_type": "queue_overflow", "difficulty": "easy", "relevant_runbooks": ["runbook_queue_overflow.md"]},
+    {"id": "Q34", "query": "Message processing backed up 30 minutes behind real-time, dead-letter queue filling", "alert_type": "queue_overflow", "difficulty": "medium", "relevant_runbooks": ["runbook_queue_overflow.md"]},
+    {"id": "Q35", "query": "A single bad payload is crashing all consumers on deserialization, backlog climbing fast", "alert_type": "queue_overflow", "difficulty": "hard", "relevant_runbooks": ["runbook_queue_overflow.md"]},
+    {"id": "Q36", "query": "Kafka consumer group lagging, worker replicas scaled up but no progress, pods OOMKilled", "alert_type": "queue_overflow", "difficulty": "composite", "relevant_runbooks": ["runbook_queue_overflow.md", "runbook_pod_crash.md"]},
+
+    {"id": "Q37", "query": "Spike in HTTP 401 errors, JWT validation failing across all microservices", "alert_type": "auth_failure", "difficulty": "easy", "relevant_runbooks": ["runbook_auth_failure.md"]},
+    {"id": "Q38", "query": "Users suddenly cannot log in, Auth0 status page shows a partial outage", "alert_type": "auth_failure", "difficulty": "medium", "relevant_runbooks": ["runbook_auth_failure.md"]},
+    {"id": "Q39", "query": "Some users get access denied while others work fine, RBAC change suspected", "alert_type": "auth_failure", "difficulty": "hard", "relevant_runbooks": ["runbook_auth_failure.md"]},
+    {"id": "Q40", "query": "NTP service stopped, 5-minute clock drift on auth servers, all JWTs rejected as expired", "alert_type": "auth_failure", "difficulty": "composite", "relevant_runbooks": ["runbook_auth_failure.md"]}
+  ]
+}
