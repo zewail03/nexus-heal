@@ -1,0 +1,26 @@
+{
+  "num_judged": 4,
+  "runs_per_query": 3,
+  "model": "llama-3.3-70b-versatile",
+  "rubric_mean_score_0_to_1": 0.5,
+  "rubric_mean_pct": 50.0,
+  "grade_counts": {
+    "partial": 4
+  },
+  "pct_fully": 0.0,
+  "pct_partial": 100.0,
+  "pct_not_grounded": 0.0,
+  "by_difficulty": {
+    "easy": {
+      "mean_score": 0.5,
+      "n": 4
+    }
+  },
+  "previous_binary_pct_grounded": 25.0,
+  "top_unsupported_claims": [
+    "The load average of 45 on an 8-core box also suggests that the system is under heavy load.",
+    "the runbooks suggest several possible causes, including object retention, connection leaks, event listener leaks, buffer accumulation, and JVM heap misconfiguration",
+    "The root cause is likely log file growth"
+  ],
+  "wall_clock_seconds": 230.0
+}
