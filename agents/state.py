@@ -27,8 +27,9 @@ class NexusState(TypedDict):
 
     # Watcher output
     human_approved: bool
-    execution_status: str    # pending / approved / rejected / executed / failed
+    execution_status: str    # pending / rejected / executed / partially_executed
     validation_result: str
+    command_results: List[dict]  # Per-command: classification, executed, exit_code, stdout, stderr
     final_message: str       # What to send back to Telegram/UI
 
     # Meta

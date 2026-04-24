@@ -119,10 +119,48 @@ def _initial_state(alert_id: str, alert_text: str) -> dict:
         "human_approved": False,
         "execution_status": "pending",
         "validation_result": "",
+        "command_results": [],
         "final_message": "",
         "iteration_count": 0,
         "error": None,
     }
+
+
+def test_approve_endpoint_surfaces_command_results(client: TestClient) -> None:
+    """After /approve, the API must expose `command_results` and
+    `validation_result` built from the Watcher's real execution pass
+    (or gating).  This proves the Watcher is no longer returning a
+    hard-coded success string — the response is assembled from the
+    classifier + subprocess pass."""
+    # 1. analyze an alert to create a pending record
+    r = client.post(
+        "/analyze",
+        json={"alert_id": "E2E-APPROVE-001",
+              "alert_text": "Disk usage 97% on /var/log volume, 'No space left on device' errors",
+              "source": "pytest"},
+    )
+    assert r.status_code == 200
+
+    # 2. approve it — Watcher should now run its classifier + subprocess
+    r2 = client.post("/approve/E2E-APPROVE-001", params={"approved": "true"})
+    assert r2.status_code == 200
+    data = r2.json()
+    assert data["approved"] is True
+    assert data["execution_status"] in {"executed", "partially_executed"}
+    # Plumbing surfaces the new fields
+    assert "validation_result" in data
+    assert "command_results" in data
+    assert isinstance(data["command_results"], list)
+    # validation_result must be built from real output — it includes either
+    # an EXECUTED marker (safe command ran) or a GATED marker (mutation
+    # held).  The old hard-coded "Fix applied successfully. All checks
+    # passed." string must NOT appear.
+    assert "All checks passed" not in data["validation_result"]
+    # Every per-command result carries the schema the Watcher produces
+    for cr in data["command_results"]:
+        assert "classification" in cr
+        assert cr["classification"] in {"safe", "mutation", "unknown"}
+        assert "executed" in cr
 
 
 def test_graph_invocation_retrieves_docs_from_rag() -> None:

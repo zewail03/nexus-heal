@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Optional
 
 app = FastAPI(title="NEXUS-HEAL API", version="1.0.0")
 
@@ -56,6 +55,7 @@ async def analyze_alert(request: AlertRequest):
         "human_approved": False,
         "execution_status": "pending",
         "validation_result": "",
+        "command_results": [],
         "final_message": "",
         "iteration_count": 0,
         "error": None,
@@ -102,6 +102,8 @@ async def approve_fix(alert_id: str, approved: bool = True):
         "alert_id": alert_id,
         "approved": approved,
         "execution_status": stored["execution_status"],
+        "validation_result": stored.get("validation_result", ""),
+        "command_results": stored.get("command_results", []),
         "final_message": stored["final_message"],
     }
 

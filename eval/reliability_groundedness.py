@@ -97,6 +97,7 @@ def _build_initial_state(alert_id: str, alert_raw: str) -> dict:
         "human_approved": False,
         "execution_status": "pending",
         "validation_result": "",
+        "command_results": [],
         "final_message": "",
         "iteration_count": 0,
         "error": None,
