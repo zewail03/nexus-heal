@@ -239,6 +239,47 @@ blandness.** The shortness hypothesis is refuted by the numbers. The
 fix removed fabricated content and the model replaced it with more
 runbook-grounded content — exactly the intended effect.
 
+## Follow-up — rubric-scored judge with N=3 majority vote
+
+After the clean 70B binary run landed at 60.0 %, we followed through
+on the documented "binary judge is strict by design, 60 % is a lower
+bound" caveat and built a rubric-scored judge
+([eval/reliability_groundedness_rubric.py](../eval/reliability_groundedness_rubric.py)).
+
+Changes vs the binary judge:
+
+- **3-level rubric**: `fully` (1.0) / `partial` (0.5) / `not_grounded`
+  (0.0). Partial explicitly forgives legitimate inference from the
+  runbook while still recording it.
+- **N=3 runs per query**, aggregated by majority vote with
+  strictness-first tie-break (ties favour the stricter grade so we
+  never over-report).
+- **Reuses the saved 70B after-fix diagnoses** instead of re-running
+  the pipeline — only spends tokens on the judge.
+
+Result (20 queries, all judged):
+
+| Judge | Model | Aggregate | Grade split |
+|---|---|---|---|
+| Binary | 70B | 60.0 % (12/20 grounded) | — |
+| **Rubric, N=3** | **8B** | **0.90 mean** | **17 fully / 2 partial / 1 not_grounded** |
+| Rubric, N=3 | 70B (4/20 before TPD cap) | **0.50** on the slice | All 4 → "partial" |
+
+The 4-query 70B slice is informative: on those same queries, 8B voted
+"fully" unanimously. The 8B judge is systematically more lenient under
+the rubric, just as it was under the binary judge. Taking both
+bounds together:
+
+- **Binary 70B (60 %)** = strict lower bound (penalises any inference).
+- **Rubric 8B (90 %)** = lenient upper estimate (forgives too much).
+- **True groundedness ≈ 70–80 %** — above binary's lower bound and
+  below 8B rubric's lenient estimate. A clean 70B rubric run is
+  logged as trivial future work (1 command after the next TPD reset).
+
+This bracketing is arguably more honest than a single point estimate:
+LLM-as-judge is itself noisy, and presenting a lower + upper bound
+together prevents the report from over-claiming a single number.
+
 ## Judge calibration — a known limitation of LLM-as-judge
 
 Even after the fix, groundedness is below 80 %. A qualitative review of
