@@ -67,29 +67,26 @@ def build_embedding_configs() -> list[dict]:
             "factory": lambda: embedding_functions.DefaultEmbeddingFunction(),
         }
     ]
-    # Optional: sentence-transformers (requires torch — may not be installed)
+    # Optional: sentence-transformers (requires torch — may not be installed).
+    # Each factory constructs a fresh EF at call-time inside the sweep loop,
+    # so we don't construct one here just to check availability.
     if importlib.util.find_spec("sentence_transformers") is not None:
-        try:
-            ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        configs.append({
+            "name": "st-minilm-l6-v2",
+            "description": "sentence-transformers all-MiniLM-L6-v2 (full-precision)",
+            "factory": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name="all-MiniLM-L6-v2"
-            )
-            configs.append({
-                "name": "st-minilm-l6-v2",
-                "description": "sentence-transformers all-MiniLM-L6-v2 (full-precision)",
-                "factory": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name="all-MiniLM-L6-v2"
-                ),
-            })
-            # BGE-small — stronger on MTEB retrieval benchmarks
-            configs.append({
-                "name": "bge-small-en-v1.5",
-                "description": "BAAI/bge-small-en-v1.5 (sentence-transformers)",
-                "factory": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name="BAAI/bge-small-en-v1.5"
-                ),
-            })
-        except Exception as e:
-            print(f"[sweep] WARN — sentence-transformers import failed at runtime: {e}")
+            ),
+        })
+        # BGE-small — a different MiniLM-family architecture, known to be
+        # stronger on generic MTEB retrieval benchmarks.
+        configs.append({
+            "name": "bge-small-en-v1.5",
+            "description": "BAAI/bge-small-en-v1.5 (sentence-transformers)",
+            "factory": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="BAAI/bge-small-en-v1.5"
+            ),
+        })
     else:
         print("[sweep] sentence-transformers not installed — running default embedding only")
     return configs
@@ -402,7 +399,13 @@ def main() -> None:
 
     write_csv(rows_ranked, RESULTS_DIR / "sweep_results.csv")
     write_summary_md(rows_ranked, RESULTS_DIR / "sweep_summary.md")
-    write_design_choices_md(rows_ranked[0], rows_ranked, RESULTS_DIR / "design_choices.md")
+    # Note: design_choices.md is hand-curated (kept under git, discusses the
+    # full narrative — section lengths, robustness, trade-offs). The sweep
+    # writes a bare auto-generated variant alongside for traceability only;
+    # the curated file is NEVER overwritten from here.
+    write_design_choices_md(
+        rows_ranked[0], rows_ranked, RESULTS_DIR / "design_choices_auto.md"
+    )
 
     winner = rows_ranked[0]
     print("\n" + "=" * 60)
