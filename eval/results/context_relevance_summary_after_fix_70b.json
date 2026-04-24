@@ -1,0 +1,33 @@
+{
+  "num_queries": 40,
+  "num_chunks_judged": 120,
+  "threshold_useful": 0.7,
+  "overall": {
+    "mean_chunk_relevance": 0.7758,
+    "pct_chunks_useful_ge_threshold": 91.67
+  },
+  "by_difficulty": {
+    "easy": {
+      "mean_chunk_relevance": 0.78,
+      "pct_chunks_useful_ge_threshold": 90.0,
+      "n_chunks": 30
+    },
+    "medium": {
+      "mean_chunk_relevance": 0.7733,
+      "pct_chunks_useful_ge_threshold": 86.67,
+      "n_chunks": 30
+    },
+    "hard": {
+      "mean_chunk_relevance": 0.7967,
+      "pct_chunks_useful_ge_threshold": 96.67,
+      "n_chunks": 30
+    },
+    "composite": {
+      "mean_chunk_relevance": 0.7533,
+      "pct_chunks_useful_ge_threshold": 93.33,
+      "n_chunks": 30
+    }
+  },
+  "wall_clock_seconds": 240.9,
+  "model": "llama-3.3-70b-versatile"
+}

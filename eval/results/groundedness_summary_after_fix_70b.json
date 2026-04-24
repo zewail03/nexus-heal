@@ -1,0 +1,33 @@
+{
+  "num_sampled": 20,
+  "num_judged": 20,
+  "overall": {
+    "pct_grounded": 60.0,
+    "num_ungrounded": 8
+  },
+  "by_difficulty": {
+    "easy": {
+      "pct_grounded": 40.0,
+      "n": 5
+    },
+    "medium": {
+      "pct_grounded": 80.0,
+      "n": 5
+    },
+    "hard": {
+      "pct_grounded": 40.0,
+      "n": 5
+    },
+    "composite": {
+      "pct_grounded": 80.0,
+      "n": 5
+    }
+  },
+  "top_unsupported_claims": [
+    "The load average of 45 on an 8-core box also suggests that the system is under heavy load.",
+    "the specific root cause",
+    "a connection leak"
+  ],
+  "wall_clock_seconds": 213.9,
+  "model": "llama-3.3-70b-versatile"
+}

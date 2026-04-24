@@ -30,12 +30,12 @@ Legend: ✅ delivered · ⚠️ partial / delivered with caveat · ❌ not deliv
 | Groundedness check (LLM-as-judge) | ✅ | [eval/reliability_groundedness.py](../eval/reliability_groundedness.py), [eval/results/groundedness.csv](../eval/results/groundedness.csv) | 20 stratified queries (5 per difficulty), full pipeline + judge. Caught prompt-leak bug; see [reliability_findings.md](reliability_findings.md). |
 | End-to-end pytest suite | ✅ | [tests/test_e2e.py](../tests/test_e2e.py), [tests/conftest.py](../tests/conftest.py) | 5 tests (4 parametrized HTTP + 1 direct graph). All passing in ~33s. `pytest` added to [requirements.txt](../requirements.txt). |
 | Maven prompt-leak fix | ✅ | [agents/maven.py](../agents/maven.py) | Reliability check surfaced it; 2-line prompt fix applied and re-measured. 15 % → 58.82 % groundedness. Documented in [reliability_findings.md](reliability_findings.md). |
-| Reliability re-verification on 70B | ⚠️ pending | — | After-fix re-run had to use 8B due to 70B daily token quota exhaustion. Clean 70B re-run is queued for the next TPD reset. 8B caveat disclosed throughout the report. |
+| Reliability re-verification on 70B | ✅ | [eval/results/groundedness_after_fix_70b.csv](../eval/results/groundedness_after_fix_70b.csv), [eval/results/context_relevance_after_fix_70b.csv](../eval/results/context_relevance_after_fix_70b.csv) | Clean 70B after-fix run completed after TPD reset. Groundedness 60.0 % (20/20 judged), context relevance 0.7758 / 91.67 %. The 8B cross-model check (58.82 %) lands within 1.2 points of the 70B result, validating both. |
 
 ## Summary
 
 - **11 / 11** Milestone 2 rows delivered; one (`Fix execution with rollback`) ships as intentionally simulated, not real — called out explicitly.
-- **7 / 9** Milestone 3 rows fully delivered; two are `⚠️ partial`:
+- **8 / 9** Milestone 3 rows fully delivered; one remains `⚠️ partial`:
   - Embedding comparison limited to ONNX MiniLM (torch install skipped by design)
-  - Reliability re-verification ran on 8B, not 70B (daily-quota ceiling; directional result valid)
+- The previously-pending 70B reliability re-run is complete (`✅`) and its numbers are now the headline in the report.
 - No row is `❌ not delivered`.

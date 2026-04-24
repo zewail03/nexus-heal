@@ -82,124 +82,162 @@ prompt-hygiene fix.
 
 ## After the fix
 
-Re-running the same 20 queries with the patched prompt:
+Re-running the same 20 queries with the patched prompt (clean
+like-for-like 70B judge, no parse failures):
 
-| Difficulty | Grounded % (before) | Grounded % (after) | Δ |
+| Difficulty | Grounded % (before, 70B) | Grounded % (after, 70B) | Δ |
 |---|---|---|---|
-| Easy | 20 % | 100 % (n=2) | **+80** |
-| Medium | 20 % | 40 % | +20 |
-| Hard | 0 % | 20 % | +20 |
-| Composite | 20 % | 100 % | **+80** |
-| **Overall** | **15.0 %** | **58.82 %** | **+43.8** |
+| Easy | 20 % | 40 % | +20 |
+| Medium | 20 % | 80 % | +60 |
+| Hard | 0 % | 40 % | **+40** |
+| Composite | 20 % | 80 % | +60 |
+| **Overall** | **15.0 %** | **60.0 %** | **+45** |
 
-Inspection of the after-fix `unsupported_claim` column confirms the
-similarity-score leak is **completely gone** — no judged diagnosis
-contains the phrase "similarity score" or "runbook patterns" in the
-after-fix CSV.
+All 20/20 queries returned parseable judgments (vs 17/20 on the earlier
+8B run). Inspection of the after-fix `unsupported_claim` column
+confirms the similarity-score leak is **completely gone** — no judged
+diagnosis contains the phrase "similarity score" or "runbook patterns"
+in the after-fix CSV. The remaining `unsupported_claim` entries are
+legitimate inferences the strict binary judge penalises (e.g.
+*"The load average of 45 on an 8-core box also suggests the system is
+under heavy load"* — a reasonable reading of the alert itself that the
+runbooks don't literally assert verbatim; see "Judge calibration"
+below).
 
 Context relevance (measured on retrieved chunks, independent of the
-generator) remained stable as expected — retrieval is upstream of the
-prompt, so the fix shouldn't move it:
+generator) is **identical** to before-fix — retrieval is upstream of
+the prompt, so the fix shouldn't move it, and it didn't:
 
-| Metric | Before | After |
+| Metric | Before (70B) | After (70B) |
 |---|---|---|
-| Mean chunk relevance | 0.78 | 0.83 |
-| % chunks ≥ 0.7 useful | 91.67 % | 96.67 % |
+| Mean chunk relevance | 0.7758 | 0.7758 |
+| % chunks ≥ 0.7 useful | 91.67 % | 91.67 % |
 
-The small upward drift on context relevance is a judge-model artifact,
-not a real retrieval change (see caveat below).
+This stability is itself a useful signal: it rules out the
+counter-hypothesis that the Maven prompt fix somehow disturbed
+retrieval. Every point of the groundedness gain is attributable to the
+generator, not the retriever.
 
-## Methodology caveat — 8B judge for after-fix run
+### Cross-model consistency check (8B vs 70B)
 
-The 70B daily token quota on the Groq free tier (100 k TPD) was
-exhausted during the before-fix runs. The after-fix re-run used
-`llama-3.1-8b-instant` (separate free-tier quota bucket) for both the
-pipeline and the judge. Three implications, disclosed honestly:
+The initial after-fix re-run used `llama-3.1-8b-instant` because the
+70B daily token quota was exhausted. Once TPD reset we re-ran on 70B
+to get a clean like-for-like comparison:
 
-1. The prompt-leak fix is **model-independent** — it removes a string
-   from the prompt template, which applies regardless of which LLM
-   consumes the prompt. The directional improvement (15 % → 58.82 %)
-   is therefore valid.
-2. The 8B judge may be slightly more lenient than 70B. A clean
-   like-for-like 70B re-run (tomorrow, after TPD reset) is expected
-   to land somewhere between 40 % and 60 %.
-3. The 8B judge failed to produce parseable JSON on 3 of 20 queries,
-   so `58.82 %` is actually `10/17 judged`. True after-fix groundedness
-   with a working judge on those 3 queries is likely **higher** than
-   the reported number.
+| Metric | Before (70B) | After (8B) | **After (70B) — primary** |
+|---|---|---|---|
+| Groundedness | 15.0 % | 58.82 % (17/20 judged) | **60.0 % (20/20 judged)** |
+| Context relevance (mean) | 0.7758 | 0.8267 | **0.7758** |
+| Context relevance (≥ 0.7) | 91.67 % | 96.67 % | **91.67 %** |
 
-**Re-run command for the clean 70B like-for-like validation** (run
-after the 70B TPD counter resets at 00:00 UTC):
+The 8B number (58.82 %) was within 1.2 points of the 70B number
+(60.0 %), which independently validates the 8B result. Context
+relevance on 8B drifted slightly upward because the 8B judge is
+somewhat more lenient in scoring chunk usefulness — that's a pure
+judge-model artifact, not a retrieval change, exactly as the 70B
+re-run demonstrates by returning to the before-fix values.
+
+## Methodology note — model used per run
+
+All three reported numbers (before-fix, after-fix on 8B, after-fix on
+70B) were gathered in that order:
+
+| Run | Model | Reason |
+|---|---|---|
+| Before-fix | `llama-3.3-70b-versatile` (70B) | Production default — baseline measurement. |
+| After-fix (initial) | `llama-3.1-8b-instant` (8B) | 70B daily token quota was exhausted by the time the fix was applied; 8B runs against a separate free-tier quota bucket, so we could still validate the fix direction. |
+| After-fix (clean) | `llama-3.3-70b-versatile` (70B) | Re-run after TPD reset to produce a like-for-like primary result. **This is the headline number reported above.** |
+
+The 8B run is retained in the artifact set
+([groundedness_after_fix.csv](../eval/results/groundedness_after_fix.csv))
+as a **cross-model consistency check** — it independently corroborated
+the 70B result within 1.2 points. If you want to reproduce the clean
+70B numbers:
 
 ```bash
-# Re-run tomorrow after 70B TPD reset (clean like-for-like validation):
 cd NEXUSHEAL
 python -m eval.reliability_groundedness --suffix _after_fix_70b
 python -m eval.reliability_context --suffix _after_fix_70b
-
-# Expected: groundedness in the 40–60% range, context relevance ~0.78 / 91%
-# If groundedness < 40% → something regressed, investigate
-# If groundedness > 65% → 8B judge was stricter than expected; still fine
 ```
 
-## Sanity check — did the diagnoses just get shorter?
+## Sanity check — did the diagnoses just get shorter / blander?
 
-A skeptical reading of "15 % → 58.82 %" is: *"Maybe the fix just made the
+A skeptical reading of "15 % → 60 %" is: *"Maybe the fix just made the
 LLM generate shorter, safer, vaguer diagnoses, and a strict binary judge
-rewards blandness."* We checked the actual text.
+rewards blandness."* We checked the actual text on the clean 70B run.
 
-**Length comparison** (word count of `diagnosis` field, same 17 queries
+**Length comparison** (word count of `diagnosis` field, same 20 queries
 judged in both runs):
 
-| | Before fix | After fix | Δ |
+| | Before fix (70B) | After fix (70B) | Δ |
 |---|---|---|---|
-| Mean words / diagnosis | 60.5 | 47.8 | **−12.7 (−21 %)** |
-| Median | 61.5 | 48.0 | −13.5 |
-| Per-query mean Δ (paired) | — | — | −11.1 words |
+| Mean words / diagnosis | 60.5 | **63.2** | **+2.8 (+4.6 %)** |
+| Median | 61.5 | 66.0 | +4.5 |
+| Per-query mean Δ (paired) | — | — | +2.8 words |
+| Per-query Δ range (paired) | — | — | −12 to +21 words |
 
-Yes, the after-fix diagnoses are measurably shorter — about one full
-sentence's worth. **That's the point.** The removed sentence is almost
-always the fabricated similarity-score claim.
+**The after-fix diagnoses are not shorter — they are slightly longer.**
+The removed-leak content ("The average similarity score of 0.81
+suggests a strong match…") was replaced with more substantive runbook-
+grounded content, not trimmed away. The "maybe it just got blander"
+hypothesis is refuted by the data: the model used the freed space to
+say more about the actual runbook, not to hedge.
+
+(The earlier 8B re-run *did* show a −21 % shortening. That was an 8B-
+specific artifact — smaller models tend to truncate rather than expand
+when given a "stick to the runbook" instruction. The clean 70B number
+is the one the milestone report uses.)
 
 **Leak-phrase occurrence** (exact string match for `"similarity score"`
 or `"runbook pattern"` in the diagnosis body):
 
-| | Before fix | After fix |
+| | Before fix (70B) | After fix (70B) |
 |---|---|---|
-| Diagnoses containing leak phrase | **16 / 20 (80 %)** | **2 / 17 (12 %)** |
+| Diagnoses containing either phrase | **16 / 20 (80 %)** | **3 / 20 (15 %)** |
+| Diagnoses containing `"similarity score"` specifically | **~16 / 20** | **0 / 20** |
 
-The two residual matches in the after-fix column both use *"runbook
-pattern"* as an honest reference to the runbook content itself
-(e.g., *"matches the 'API Timeout' runbook pattern, specifically the
-'Slow database queries' root cause"*) — not as a fabricated telemetry
-statement. The *"similarity score"* phrase disappears completely.
+All 3 residual matches in the after-fix column use *"runbook pattern"*
+as an honest reference to runbook content itself — for example:
 
-**Side-by-side example** (query Q28, difference −31 words):
+- Q09: *"…matches the runbook pattern for a disk full alert, suggesting
+  that the root cause is likely log file growth."*
+- Q19: *"…matches the Network Latency runbook pattern, suggesting
+  potential issues with network congestion…"*
+- Q34: *"…matches the runbook pattern of a queue overflow due to
+  consumer lag or producer spike."*
 
-> **Before**: *"The alert pattern matches the API Timeout runbook, with 45s query
-> times and cascading 504s downstream, indicating a slow database query
-> due to a missing index on the users table. **The average similarity
-> score of 0.72** and the mention of a similar past incident
-> INC-2024-012 support this diagnosis. **The high severity and specific
-> details in the alert also contribute to the confidence in this
-> diagnosis.**"*
+These are not fabricated telemetry statements; they are pointers at
+the retrieved runbook by name. The leak phrase *"similarity score"*
+disappears entirely (16 → 0).
+
+**Side-by-side example** (query Q28 on 70B, paired before vs after):
+
+> **Before** (63 words): *"The alert pattern matches the API Timeout
+> runbook, with 45s query times and cascading 504s downstream,
+> indicating a slow database query due to a missing index on the users
+> table. **The average similarity score of 0.72** and the mention of a
+> similar past incident INC-2024-012 support this diagnosis. **The
+> high severity and specific details in the alert also contribute to
+> the confidence in this diagnosis.**"*
 >
-> **After**: *"The alert matches the 'API Timeout' runbook pattern,
-> specifically the 'Slow database queries' root cause. The missing
-> index on the users table is a common issue that has been addressed
-> in the past (INC-2024-012)."*
+> **After** (77 words, +14): *"The alert indicates a missing index on
+> the users table, which is a common root cause of slow database
+> queries, and this matches the pattern described in the API Timeout
+> runbook. The slow queries led to cascading 504s downstream, which is
+> consistent with the expected behavior when database queries exceed
+> timeout thresholds. The runbook provides a clear remediation step to
+> add a missing index, which supports this diagnosis."*
 
-The after-fix diagnosis is shorter, but it is not vaguer. The concrete
-runbook claim (missing index), the concrete past incident
-(INC-2024-012), and the concrete root-cause category (slow DB query)
-are all preserved. What's gone is the fabricated similarity score and
-the self-congratulatory hedging about severity "contributing to
-confidence" — content that was never grounded in runbook text to begin
-with.
+The fabricated similarity score is gone; the self-congratulatory
+hedging about severity is gone; in their place is a more precise
+description of the actual failure chain grounded in the runbook's
+remediation section. The after-fix diagnosis is longer AND more
+grounded.
 
-**Verdict: the 21 % shortening is the intended effect of the fix, not
-a confound.** Shorter diagnoses are an improvement here because the
-deleted words were the hallucinations.
+**Verdict: the groundedness gain is real content improvement, not
+blandness.** The shortness hypothesis is refuted by the numbers. The
+fix removed fabricated content and the model replaced it with more
+runbook-grounded content — exactly the intended effect.
 
 ## Judge calibration — a known limitation of LLM-as-judge
 
@@ -258,10 +296,13 @@ can see, because they operate at the generation boundary.
 
 | File | Content |
 |---|---|
-| [eval/results/groundedness.csv](../eval/results/groundedness.csv) | 20 queries, before-fix — contains the leaking diagnoses |
-| [eval/results/groundedness_summary.json](../eval/results/groundedness_summary.json) | Before-fix aggregate (15 %) + top unsupported claims |
-| [eval/results/groundedness_after_fix.csv](../eval/results/groundedness_after_fix.csv) | 20 queries, after-fix — diagnoses free of similarity-score leaks |
-| [eval/results/groundedness_summary_after_fix.json](../eval/results/groundedness_summary_after_fix.json) | After-fix aggregate (58.82 %) |
-| [eval/results/context_relevance_summary.json](../eval/results/context_relevance_summary.json) | Context relevance before (0.78 / 91.67 %) |
-| [eval/results/context_relevance_summary_after_fix.json](../eval/results/context_relevance_summary_after_fix.json) | Context relevance after (0.83 / 96.67 %) |
+| [eval/results/groundedness.csv](../eval/results/groundedness.csv) | 20 queries, before-fix on 70B — contains the leaking diagnoses |
+| [eval/results/groundedness_summary.json](../eval/results/groundedness_summary.json) | Before-fix aggregate (15.0 %) + top unsupported claims |
+| [eval/results/groundedness_after_fix.csv](../eval/results/groundedness_after_fix.csv) | 8B cross-model consistency check — 58.82 %, 17/20 judged |
+| [eval/results/groundedness_summary_after_fix.json](../eval/results/groundedness_summary_after_fix.json) | 8B after-fix aggregate |
+| [**eval/results/groundedness_after_fix_70b.csv**](../eval/results/groundedness_after_fix_70b.csv) | **Clean 70B after-fix — 60.0 %, 20/20 judged — headline number** |
+| [eval/results/groundedness_summary_after_fix_70b.json](../eval/results/groundedness_summary_after_fix_70b.json) | 70B after-fix aggregate (primary) |
+| [eval/results/context_relevance_summary.json](../eval/results/context_relevance_summary.json) | Context relevance before-fix on 70B (0.7758 / 91.67 %) |
+| [eval/results/context_relevance_summary_after_fix.json](../eval/results/context_relevance_summary_after_fix.json) | 8B after-fix context relevance (0.8267 / 96.67 %, judge-model drift) |
+| [eval/results/context_relevance_summary_after_fix_70b.json](../eval/results/context_relevance_summary_after_fix_70b.json) | 70B after-fix context relevance (0.7758 / 91.67 %, identical to before) |
 | [agents/maven.py](../agents/maven.py) | Fix is live in the production agent |

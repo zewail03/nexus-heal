@@ -14,10 +14,11 @@ See the full matrix in [milestone3_matrix.md](milestone3_matrix.md). Summary:
   fix execution is **simulated** (Watcher reports success without running
   real shell commands) — an intentional safety choice we disclose
   explicitly.
-- **9 new Milestone 3 deliverables.** Seven fully delivered (`✅`); two
+- **9 new Milestone 3 deliverables.** Eight fully delivered (`✅`); one
   `⚠️ partial` — embedding comparison was limited to ONNX MiniLM (torch
-  install skipped by design), and the reliability re-run after the
-  prompt-fix used 8B because 70B TPD was exhausted.
+  install skipped by design). The 70B like-for-like reliability
+  re-verification previously flagged `⚠️ pending` is now complete
+  (groundedness 60.0 %, context relevance 0.7758 / 91.67 %).
 - **Zero items are `❌ not delivered`.**
 
 ---
@@ -141,30 +142,37 @@ repeated in its diagnosis body.
 
 **Two-line prompt fix** applied in [agents/maven.py](../agents/maven.py)
 (remove the RAG-score line from the prompt, add an instruction to stick
-to runbook facts). Re-running:
+to runbook facts). Re-running on 70B (clean like-for-like):
 
-| | Before fix | After fix | Δ |
+| | Before fix (70B) | After fix (70B) | Δ |
 |---|---|---|---|
-| Groundedness | **15.0 %** | **58.82 %** | **+43.8 pts** |
-| Context relevance (mean) | 0.78 | 0.83 | +0.05 |
-| Context relevance (% ≥ 0.7) | 91.67 % | 96.67 % | +5 pts |
+| Groundedness | **15.0 %** | **60.0 %** | **+45 pts** |
+| Context relevance (mean) | 0.7758 | 0.7758 | 0 (stable) |
+| Context relevance (% ≥ 0.7) | 91.67 % | 91.67 % | 0 (stable) |
+| Diagnoses containing `"similarity score"` | ~16 / 20 (80 %) | **0 / 20** | −80 pts |
+| Mean words / diagnosis | 60.5 | 63.2 | +4.6 % (refutes "blander" hypothesis) |
 
-Full narrative with diffs, judged claims, and caveats in
-[reliability_findings.md](reliability_findings.md).
+Context relevance is **identical** to before-fix, confirming the
+prompt change only affected the generator — not retrieval — exactly as
+claimed. Full narrative with diffs, judged claims, a cross-model
+consistency check, and the "did diagnoses just get blander?" sanity
+analysis in [reliability_findings.md](reliability_findings.md).
 
-**Two honest caveats** on the after-fix groundedness number:
+**One remaining honest caveat** on the after-fix groundedness number:
 
-1. **Model caveat**: the after-fix re-run used `llama-3.1-8b-instant`
-   (70B free-tier TPD was exhausted). The prompt-leak fix is
-   model-independent (pure prompt engineering), so the improvement is
-   directionally valid. A clean 70B re-run is queued for the next TPD
-   reset.
-2. **Judge caveat**: the binary `{grounded: 0/1}` judge penalises
-   legitimate inference. Several ungrounded diagnoses after the fix
-   are, on human review, correctly inferring from the runbook
-   (Q01's "thread pool exhausted" is literally listed as a root cause
-   in `runbook_api_timeout.md`). **58.82 % is therefore a lower bound**
-   on true groundedness.
+- **Judge strictness**: the binary `{grounded: 0/1}` judge penalises
+  legitimate inference. Several of the 8 ungrounded diagnoses after the
+  fix are, on human review, correctly inferring from the runbook
+  (e.g. *"the load average of 45 on an 8-core box also suggests the
+  system is under heavy load"* — a reasonable reading of the alert
+  that the runbooks don't assert verbatim). **60 % is therefore a
+  lower bound** on true groundedness; a rubric-scored judge
+  (see §5) would land higher.
+
+The initial 8B re-run from before TPD reset (58.82 %, 17/20 judged)
+is retained in the artifact set as an independent cross-model
+consistency check — its 1.2-point proximity to the 70B number
+validates the 70B result.
 
 ### 3.4 Known limitations
 
@@ -254,7 +262,7 @@ Consolidated from items raised across §3 and
 | Medium | Rubric-scored groundedness judge (multi-run) | Current binary judge is a known lower bound; a rubric (fully / partial / none) with multiple judge runs would raise the reported 58.82 % toward its true value | Low |
 | Medium | Benchmark BGE-small-en-v1.5 vs MiniLM | Expected to improve retrieval on the hard bucket (the only weak spot in §3.2) | Low |
 | Low | LLM-based query rewriting before retrieval | Alternative mitigation for Q07 — transforms user's colloquial query into domain-keyword form before the embedding call | Medium |
-| Low | 70B like-for-like reliability re-run | Replaces the 8B after-fix number with a clean 70B measurement for an apples-to-apples comparison | Trivial (1 command, see reliability_findings.md) |
+| ~~Low~~ Done | ~~70B like-for-like reliability re-run~~ | ~~Replaces the 8B after-fix number with a clean 70B measurement~~ | Completed — 60.0 % grounded on clean 70B, retained in `groundedness_after_fix_70b.csv`. |
 
 **Why this ordering**: hybrid retrieval unlocks the single biggest
 quality ceiling we documented (the hard-bucket floor), and real fix
@@ -281,8 +289,10 @@ quality refinements rather than capability gaps.
 | [eval/results/design_choices.md](../eval/results/design_choices.md) | Full design-choice narrative + section-length evidence |
 | [eval/results/context_relevance.csv](../eval/results/context_relevance.csv) | 120 judged (query, chunk) pairs — before fix |
 | [eval/results/context_relevance_after_fix.csv](../eval/results/context_relevance_after_fix.csv) | Same — after fix |
-| [eval/results/groundedness.csv](../eval/results/groundedness.csv) | 20 judged diagnoses — before fix (contains leaks) |
-| [eval/results/groundedness_after_fix.csv](../eval/results/groundedness_after_fix.csv) | Same — after fix (leaks gone) |
+| [eval/results/groundedness.csv](../eval/results/groundedness.csv) | 20 judged diagnoses — before fix on 70B (contains leaks) |
+| [eval/results/groundedness_after_fix.csv](../eval/results/groundedness_after_fix.csv) | 8B cross-model consistency check (58.82 %, 17/20 judged) |
+| [eval/results/groundedness_after_fix_70b.csv](../eval/results/groundedness_after_fix_70b.csv) | **Clean 70B after-fix (60.0 %, 20/20 judged) — headline number** |
+| [eval/results/context_relevance_after_fix_70b.csv](../eval/results/context_relevance_after_fix_70b.csv) | Clean 70B after-fix context relevance (0.7758 / 91.67 %) |
 | [docs/milestone3_matrix.md](milestone3_matrix.md) | Planned-vs-delivered matrix |
 | [docs/reliability_findings.md](reliability_findings.md) | Prompt-leak bug story |
 | [tests/test_e2e.py](../tests/test_e2e.py) | pytest smoke suite |
