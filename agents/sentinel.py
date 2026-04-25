@@ -4,9 +4,18 @@ from agents.state import NexusState
 from config import GROQ_API_KEY, LLM_MODEL
 
 ALERT_TYPES = [
+    # Original 10 (Milestone 2)
     "cpu_spike", "memory_leak", "disk_full", "db_connection",
     "network_latency", "ssl_expired", "api_timeout",
-    "pod_crash", "queue_overflow", "auth_failure"
+    "pod_crash", "queue_overflow", "auth_failure",
+    # Expanded 15 (Milestone 3 stretch — see knowledge_base/runbook_*.md)
+    "dns_failure", "rate_limit_exceeded", "deadlock_detected",
+    "clock_drift", "kafka_consumer_lag", "iops_throttled",
+    "cert_chain_invalid", "secrets_rotation_failed",
+    "websocket_disconnect_storm", "cdn_cache_miss",
+    "image_pull_backoff", "node_pressure_eviction",
+    "cache_invalidation_failure", "circuit_breaker_open",
+    "log_pipeline_lag", "replication_lag",
 ]
 
 

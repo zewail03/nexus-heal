@@ -1,10 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from api.storage import AlertStore
+
 app = FastAPI(title="NEXUS-HEAL API", version="1.0.0")
 
-# In-memory store for pending alerts (keyed by alert_id)
-_pending_alerts: dict = {}
+# SQLite-backed alert store. Survives server restarts. Path comes from
+# NEXUS_DB_PATH (default ./nexus_alerts.db). Tests override the env var
+# before importing this module so they hit a tmp file.
+_pending_alerts = AlertStore()
 
 
 class AlertRequest(BaseModel):
@@ -63,8 +67,8 @@ async def analyze_alert(request: AlertRequest):
 
     result = nexus_graph.invoke(initial_state)
 
-    # Store result for later approval
-    _pending_alerts[request.alert_id] = result
+    # Persist the full state for later approval / dashboard rendering.
+    _pending_alerts.put(request.alert_id, result)
 
     return DiagnosisResponse(
         alert_id=result["alert_id"],
@@ -93,10 +97,11 @@ async def approve_fix(alert_id: str, approved: bool = True):
     if not stored:
         return {"error": f"Alert {alert_id} not found"}
 
-    # Update approval and re-run watcher
+    # Update approval and re-run watcher, then persist the new state.
     stored["human_approved"] = approved
     watcher_result = watcher_agent(stored)
     stored.update(watcher_result)
+    _pending_alerts.put(alert_id, stored)
 
     return {
         "alert_id": alert_id,
@@ -122,7 +127,7 @@ async def list_alerts():
             "status": s.get("execution_status", "pending"),
             "fix_plan": s.get("fix_plan", []),
         }
-        for alert_id, s in _pending_alerts.items()
+        for alert_id, s in _pending_alerts.all().items()
     }
 
 

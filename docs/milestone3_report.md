@@ -16,10 +16,12 @@ See the full matrix in [milestone3_matrix.md](milestone3_matrix.md). Summary:
   real via subprocess, and mutation commands are gated behind manual
   review. `validation_result` is assembled from actual captured
   stdout/stderr, not a hard-coded success string.
-- **10 / 10** new Milestone 3 deliverables fully delivered (`✅`),
-  including the previously-pending 70B reliability re-run, the
-  previously-pending embedding comparison (full 27-config sweep), and
-  the new rubric-scored judge.
+- **12 / 12** new Milestone 3 deliverables fully delivered (`✅`),
+  including the 70B reliability re-run, the 3-embedding sweep, the
+  rubric-scored judge, plus three stretch items: KB expanded
+  10 → 26 runbooks, SQLite-backed `AlertStore` for Mission Control
+  persistence across restarts, and a full Streamlit UI overhaul
+  (dark neon theme, animated pipeline, terminal-style Watcher log).
 - **Zero items are `⚠️ partial`. Zero items are `❌ not delivered`.**
 
 ---
@@ -320,7 +322,8 @@ here with a strikethrough for traceability.
 | Medium | Full real fix execution with RBAC scoping + command-review UI | Watcher now runs safe read-only commands for real and gates mutations. Next step is a structured review path (RBAC, dry-run, idempotency checks) so mutations can also run safely under human approval. | High |
 | Medium | Clean 70B rubric-judge re-run | Rubric run on 8B gave 0.90; 70B cross-check (4 queries, before TPD cap) showed 70B is stricter. A full 70B rubric run would replace the 8B number with a like-for-like value. | Trivial (1 command) |
 | Low | LLM-based query rewriting before retrieval | Alternative mitigation for Q07 — transforms user's colloquial query into domain-keyword form before the embedding call. | Medium |
-| Low | Persist `_pending_alerts` in SQLite | Current in-memory store is lost on server restart. Fine for demos, not for production. | Low |
+| Low | ~~Done~~ | ~~Persist `_pending_alerts` in SQLite~~ | Completed — [`api/storage.py`](../api/storage.py) ships an `AlertStore` (WAL mode, JSON-serialized state, env-overridable path). 12 unit tests in [`tests/test_storage.py`](../tests/test_storage.py). | — |
+| ~~Done~~ | ~~Knowledge base expansion (10 → 25+ runbooks)~~ | Completed — KB now has 26 runbooks. Sentinel `ALERT_TYPES` extended 10 → 26. Re-run of the 40-query eval shows Hit@3 dropping from 0.95 → 0.80 — honest scaling effect that motivates the High-priority hybrid retrieval item. | — |
 | ~~Done~~ | ~~70B like-for-like reliability re-run~~ | Completed — 60.0 % grounded on clean 70B, in [`groundedness_after_fix_70b.csv`](../eval/results/groundedness_after_fix_70b.csv). | — |
 | ~~Done~~ | ~~Rubric-scored groundedness judge~~ | Completed — [`reliability_groundedness_rubric.py`](../eval/reliability_groundedness_rubric.py) with N=3 majority vote. 0.90 mean on 8B. | — |
 | ~~Done~~ | ~~Benchmark BGE-small-en-v1.5 vs MiniLM~~ | Completed — full 27-config sweep. BGE-small underperforms MiniLM on this corpus (−3.7 pts at selected config). Documented in [`design_choices.md`](../eval/results/design_choices.md). | — |

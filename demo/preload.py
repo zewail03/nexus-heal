@@ -24,10 +24,16 @@ import httpx
 
 
 SEEDS = [
-    ("DEMO-CPU-001",  "CPU usage 98.7% on api-gateway-prod, OOM killer active, connection pool exhausted"),
-    ("DEMO-DB-001",   "Database connection pool exhausted on primary PostgreSQL, 503 errors on /api/users"),
-    ("DEMO-DISK-001", "Disk usage 97% on /var/log volume, 'No space left on device' errors in app logs"),
-    ("DEMO-SSL-001",  "SSL certificate expired on api.example.com, HTTPS handshake failures across all clients"),
+    # Original 4 — covers M2 alert types
+    ("DEMO-CPU-001",      "CPU usage 98.7% on api-gateway-prod, OOM killer active, connection pool exhausted"),
+    ("DEMO-DB-001",       "Database connection pool exhausted on primary PostgreSQL, 503 errors on /api/users"),
+    ("DEMO-DISK-001",     "Disk usage 97% on /var/log volume, 'No space left on device' errors in app logs"),
+    ("DEMO-SSL-001",      "SSL certificate expired on api.example.com, HTTPS handshake failures across all clients"),
+    # 4 from the expanded 16-runbook M3-stretch set — shows KB breadth
+    ("DEMO-DNS-001",      "Coredns pods returning SERVFAIL, DNS lookup latency p99 above 500ms cluster-wide"),
+    ("DEMO-KAFKA-001",    "Kafka consumer-group lag 250k records on payments topic, partition 7 hot, workers CPU-bound"),
+    ("DEMO-DEADLOCK-001", "Postgres deadlocks spiking on accounts table, two transactions taking row-locks in opposite order"),
+    ("DEMO-CDN-001",      "CloudFront cache-hit ratio dropped from 92% to 48% after deploy, origin egress 6x normal"),
 ]
 
 DEFAULT_API = "http://127.0.0.1:8000"

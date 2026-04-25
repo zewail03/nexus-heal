@@ -86,8 +86,10 @@ harness, plus a real (safety-allowlisted) Watcher.
 | Reliability | Groundedness — binary 70B (after fix) | **15 % → 60 %** |
 | Reliability | Groundedness — rubric N=3 (8B) | **0.90 mean** |
 | Sweep | Configurations evaluated | **27** (3 embeddings × 9 chunk/overlap) |
-| Tests | pytest suite | **36 passing** in ~44 s |
+| Tests | pytest suite (deterministic + e2e) | **48 total**, 42 deterministic in ~2 s |
 | Watcher | Safe commands run for real, mutations gated | ✅ |
+| Knowledge base | Runbooks ingested into ChromaDB | **26** (post-stretch — was 10) |
+| Persistence | Alert store survives server restart | SQLite-backed `AlertStore` |
 
 The retrieval-quality eval surfaced a real bug — the Maven prompt was
 leaking RAG similarity scores into diagnoses, which the LLM then
@@ -124,8 +126,10 @@ nexus-heal/
 ├── rag/
 │   ├── vectorstore.py        # ChromaDB ingest (chunk=500/overlap=50)
 │   └── retriever.py          # cosine top-k query
-├── knowledge_base/           # 10 runbook markdown files
-├── api/server.py             # FastAPI: /analyze, /approve, /alerts, /health
+├── knowledge_base/           # 26 runbook markdown files (10 M2 + 16 M3-stretch)
+├── api/
+│   ├── server.py             # FastAPI: /analyze, /approve, /alerts, /health
+│   └── storage.py            # SQLite AlertStore — survives server restart
 ├── bot/telegram_bot.py       # Telegram bot — /alert, /demo, Approve/Reject buttons
 ├── n8n/nexus_heal_workflow.json
 ├── ui/
@@ -143,6 +147,7 @@ nexus-heal/
 ├── tests/
 │   ├── test_e2e.py           # FastAPI + graph integration (needs Groq)
 │   ├── test_watcher.py       # 30 deterministic safety-allowlist tests
+│   ├── test_storage.py       # 12 deterministic SQLite AlertStore tests
 │   └── conftest.py
 ├── demo/preload.py           # Seed the dashboard with 4 alerts
 ├── docs/                     # Milestone report, matrix, reliability story, demo script

@@ -7,3 +7,9 @@ venv/
 .claude/
 eval/_sweep_tmp/
 .pytest_cache/
+
+# SQLite alert store (persisted at runtime; do not commit)
+nexus_alerts.db
+nexus_alerts.db-journal
+nexus_alerts.db-wal
+nexus_alerts.db-shm
