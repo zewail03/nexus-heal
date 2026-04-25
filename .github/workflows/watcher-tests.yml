@@ -1,0 +1,41 @@
+name: Watcher tests
+
+# Runs the deterministic Watcher safety-allowlist tests on every push to
+# main and on every PR. These do NOT require a Groq key — they exercise
+# the classifier and subprocess plumbing only. The full e2e suite needs
+# a live Groq token and is not run in CI.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Watcher unit tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install minimal test deps
+        # The Watcher tests don't need chromadb / langgraph / fastapi —
+        # they cover agents/watcher.py and agents/state.py only.
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run Watcher unit tests
+        run: python -m pytest tests/test_watcher.py -v

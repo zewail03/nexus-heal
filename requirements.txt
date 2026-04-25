@@ -10,3 +10,13 @@ httpx>=0.27.0
 python-dotenv>=1.0.0
 pydantic>=2.9.0
 pytest>=8.0.0
+
+# UI extras (Streamlit dashboard polish — animated pipeline, radial gauges)
+plotly>=5.20.0
+streamlit-extras>=0.4.0
+streamlit-lottie>=0.0.5
+
+# OPTIONAL — only needed if you want to re-run the embedding-comparison
+# arm of eval/sweep.py (sentence-transformers / BGE-small). Pulls torch
+# (~2 GB), so kept commented for the production install path.
+# sentence-transformers>=3.0.0

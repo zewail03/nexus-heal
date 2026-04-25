@@ -1,123 +1,202 @@
-# NEXUS-HEAL
+<div align="center">
+
+# 🛡️  NEXUS-HEAL
 
 **Network Expert Unified System for Healing, Error-Analysis & Logging**
 
-A multi-agent self-healing infrastructure system built with LangGraph, FastAPI, ChromaDB, Streamlit, and Telegram.
+A multi-agent self-healing infrastructure agent — Sentinel → Maven → Healer → Watcher,
+running on LangGraph, Groq Llama 3.3, ChromaDB, FastAPI, Streamlit, Telegram, and n8n.
 
-## Architecture
+[![Watcher tests](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml/badge.svg)](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml)
+![Python](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)
+![LLM](https://img.shields.io/badge/LLM-Groq%20%E2%80%A2%20Llama%203.3%2070B-F55036)
+![RAG](https://img.shields.io/badge/RAG-ChromaDB%20%2B%20MiniLM-46AC93)
+![License](https://img.shields.io/badge/license-academic-blue)
+
+</div>
+
+---
+
+## What it does
+
+A monitoring alert hits the API. Four agents process it in sequence:
+
+1. **🧭 Sentinel** — classifies the alert into one of 10 known incident types (CPU spike, memory leak, DB connection, …) with calibrated confidence.
+2. **📚 Maven** — retrieves the top-3 most relevant runbook chunks from ChromaDB (cosine, 384-d MiniLM embeddings) and asks Llama 3.3 70B for a root cause and diagnosis. Re-runs itself if confidence < 0.5.
+3. **🔧 Healer** — generates a 3–5 step fix plan, concrete shell/`kubectl` commands, and a rollback plan.
+4. **🛡️ Watcher** — classifies each fix command into **safe** (read-only verifications: `kubectl get`, `df -h`, `curl -I`, …) and **mutation** (destructive: `kubectl delete`, `rm`, `systemctl restart`, …). Safe commands run for real via `subprocess`; mutations are gated for human review. The validation report is built from real captured stdout, not a hard-coded success string.
+
+A human approves or rejects through Telegram inline buttons or the Streamlit dashboard.
 
 ```
-Alert Source (n8n / Telegram / Manual)
-        |
-        v
-  [FastAPI Server]
-        |
-        v
-  [LangGraph Pipeline]
-    Sentinel  -->  Maven  -->  Healer  -->  Watcher  --> END
-     (classify)  (diagnose)  (fix plan)  (validate)
-                    ^  |
-                    |  v
-                 (retry if low confidence)
+Alert source (n8n / Telegram / UI / curl)
+        │
+        ▼
+   ┌──────────────────┐
+   │  FastAPI server  │
+   └────────┬─────────┘
+            │
+            ▼
+   ╔═══════════════════════════════════════════════════════════╗
+   ║  LangGraph StateGraph                                     ║
+   ║                                                           ║
+   ║   Sentinel ──▶ Maven ──▶ Healer ──▶ Watcher ──▶ END       ║
+   ║                  ▲ │                                      ║
+   ║                  └─┘  retry if confidence < 0.5 (≤ 2x)    ║
+   ╚═══════════════════════════════════════════════════════════╝
 ```
 
-## Quick Start
+---
 
-### 1. Install dependencies
+## Quick start
 
 ```bash
+# 1. Install
 pip install -r requirements.txt
-```
 
-### 2. Setup environment
-
-```bash
+# 2. Copy and edit .env (Groq + Telegram keys, all free tier)
 cp .env.example .env
-# Edit .env with your keys
-```
 
-### 3. Get API keys (all free)
-
-- **Groq**: https://console.groq.com → Create API Key
-- **Telegram**: Message @BotFather → /newbot → copy token
-- **Telegram Chat ID**: Message @userinfobot → copy id
-
-### 4. Run the system
-
-```bash
-# Start FastAPI + Telegram bot
+# 3. Run the API + Telegram bot
 python main.py
 
-# In a separate terminal — start Streamlit dashboard
+# 4. Run the dashboard (separate terminal)
 streamlit run ui/app.py
+
+# 5. Seed the dashboard with 4 demo alerts (separate terminal)
+python -m demo.preload --approve
 ```
 
-### 5. Test it
+Open **http://localhost:8501** for the dashboard, or message the Telegram bot:
+- `/demo` — run a built-in CPU-spike alert
+- `/alert <text>` — run a custom alert
 
-**Telegram:**
-- Open Telegram → search your bot → `/demo`
+---
 
-**API (curl):**
-```bash
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"alert_id": "TEST-001", "alert_text": "CPU spike 98% on prod server"}'
-```
+## Milestone 3 highlights
 
-**n8n webhook:**
-```bash
-curl -X POST http://localhost:5678/webhook/nexus-alert \
-  -H "Content-Type: application/json" \
-  -d '{"alert_id": "TEST-001", "alert_text": "CPU spike 98% on prod server"}'
-```
+This milestone added a full retrieval-quality and reliability evaluation
+harness, plus a real (safety-allowlisted) Watcher.
 
-## Project Structure
+| Layer | What we measured | Result |
+|---|---|---|
+| Retrieval | Hit@3 on 40 hand-labeled queries | **0.950** |
+| Retrieval | MRR | **0.890** |
+| Reliability | Context relevance (mean / % ≥ 0.7) | **0.78** / **91.7 %** |
+| Reliability | Groundedness — binary 70B (after fix) | **15 % → 60 %** |
+| Reliability | Groundedness — rubric N=3 (8B) | **0.90 mean** |
+| Sweep | Configurations evaluated | **27** (3 embeddings × 9 chunk/overlap) |
+| Tests | pytest suite | **36 passing** in ~44 s |
+| Watcher | Safe commands run for real, mutations gated | ✅ |
+
+The retrieval-quality eval surfaced a real bug — the Maven prompt was
+leaking RAG similarity scores into diagnoses, which the LLM then
+quoted as if they were clinical evidence. A two-line fix took
+groundedness from 15 % to 60 % on the binary judge. Full story in
+[`docs/reliability_findings.md`](docs/reliability_findings.md).
+
+---
+
+## Documentation
+
+| Doc | Purpose |
+|---|---|
+| [`docs/milestone3_report.md`](docs/milestone3_report.md) | Full milestone report (planned vs delivered, retrieval quality, reliability, correctness, future work) |
+| [`docs/milestone3_matrix.md`](docs/milestone3_matrix.md) | Planned vs delivered matrix — 11/11 M2, 10/10 M3, zero partial |
+| [`docs/reliability_findings.md`](docs/reliability_findings.md) | Prompt-leak bug story — caught by the LLM-as-judge groundedness check |
+| [`docs/demo_script.md`](docs/demo_script.md) | 3-minute click-by-click demo walkthrough |
+| [`eval/results/design_choices.md`](eval/results/design_choices.md) | Embedding + chunk + overlap choice with full sweep evidence |
+
+---
+
+## Project structure
 
 ```
 nexus-heal/
 ├── agents/
-│   ├── state.py              # LangGraph shared state definition
-│   ├── sentinel.py           # Agent 1: Alert classifier
-│   ├── maven.py              # Agent 2: RAG retriever + LLM diagnoser
-│   ├── healer.py             # Agent 3: Fix plan generator
-│   └── watcher.py            # Agent 4: Validation + outcome monitor
+│   ├── state.py              # LangGraph shared state (TypedDict)
+│   ├── sentinel.py           # Agent 1: alert classifier (LLM)
+│   ├── maven.py              # Agent 2: RAG + LLM diagnoser
+│   ├── healer.py             # Agent 3: fix-plan + commands generator
+│   └── watcher.py            # Agent 4: safety allowlist + real subprocess execution
 ├── graph/
-│   └── pipeline.py           # LangGraph StateGraph definition
+│   └── pipeline.py           # LangGraph StateGraph wiring + retry edge
 ├── rag/
-│   ├── vectorstore.py        # ChromaDB setup + document ingestion
-│   └── retriever.py          # RAG query logic
+│   ├── vectorstore.py        # ChromaDB ingest (chunk=500/overlap=50)
+│   └── retriever.py          # cosine top-k query
 ├── knowledge_base/           # 10 runbook markdown files
-├── api/
-│   └── server.py             # FastAPI server (webhook endpoint)
-├── bot/
-│   └── telegram_bot.py       # Telegram bot logic
-├── n8n/
-│   └── nexus_heal_workflow.json  # n8n workflow (importable)
+├── api/server.py             # FastAPI: /analyze, /approve, /alerts, /health
+├── bot/telegram_bot.py       # Telegram bot — /alert, /demo, Approve/Reject buttons
+├── n8n/nexus_heal_workflow.json
 ├── ui/
-│   └── app.py                # Streamlit dashboard
-├── config.py                 # Configuration
-├── main.py                   # Entry point
-├── requirements.txt
-└── .env.example
+│   ├── app.py                # Streamlit dashboard (Mission Control / Submit / Graph / RAG Debug)
+│   ├── components.py         # Animated pipeline, gauges, score bars, terminal
+│   └── styles.py             # Dark neon glassmorphism theme
+├── eval/
+│   ├── labeled_queries.json           # 40 queries × 4 difficulty levels
+│   ├── retrieval_metrics.py           # Hit@k / Precision@k / Recall@k / MRR / NDCG
+│   ├── sweep.py                       # 27-config hyperparameter sweep
+│   ├── reliability_context.py         # LLM-as-judge: per-chunk relevance
+│   ├── reliability_groundedness.py    # LLM-as-judge: binary {0, 1}
+│   ├── reliability_groundedness_rubric.py  # 3-level rubric, N=3 majority vote
+│   └── results/                       # All CSVs + JSON summaries + design_choices.md
+├── tests/
+│   ├── test_e2e.py           # FastAPI + graph integration (needs Groq)
+│   ├── test_watcher.py       # 30 deterministic safety-allowlist tests
+│   └── conftest.py
+├── demo/preload.py           # Seed the dashboard with 4 alerts
+├── docs/                     # Milestone report, matrix, reliability story, demo script
+├── config.py                 # Loads .env; LLM_MODEL is env-overridable
+├── main.py                   # Entry point — boots vectorstore + FastAPI + Telegram
+└── requirements.txt
 ```
 
-## Tech Stack
+---
+
+## Tech stack
 
 | Component | Technology |
 |---|---|
-| Multi-Agent Framework | LangGraph (StateGraph + conditional edges) |
-| LLM | Groq (Llama 3.3 70B) |
-| RAG Vector Store | ChromaDB (cosine similarity) |
-| API Server | FastAPI |
-| Frontend | Streamlit |
-| Chat Bot | python-telegram-bot |
-| Workflow Automation | n8n |
+| Multi-agent framework | LangGraph (StateGraph + conditional edges) |
+| LLM | Groq Llama 3.3 70B (default) — switchable via `LLM_MODEL=` env |
+| RAG vector store | ChromaDB (cosine, 384-d MiniLM ONNX) |
+| Retrieval embedding | `all-MiniLM-L6-v2` (ONNX-quantized; ST + BGE-small benchmarked, both rejected — see `design_choices.md`) |
+| API server | FastAPI + Uvicorn |
+| Frontend | Streamlit + Plotly (radial gauges) + custom CSS theme |
+| Chat bot | `python-telegram-bot` |
+| Workflow automation | n8n |
+| Tests | pytest (36 tests; 30 deterministic) |
+
+---
+
+## Reproducing the eval
+
+```bash
+# Retrieval metrics (40 queries against the production ChromaDB)
+python -m eval.retrieval_metrics --name baseline
+
+# Full 27-config sweep (chunk × overlap × embedding) — needs sentence-transformers
+pip install sentence-transformers
+python -m eval.sweep
+
+# Reliability checks (LLM-as-judge — needs Groq tokens)
+python -m eval.reliability_context
+python -m eval.reliability_groundedness
+python -m eval.reliability_groundedness_rubric
+
+# Tests
+python -m pytest tests/ -v
+```
+
+---
 
 ## Team
 
 | Member | Component |
 |---|---|
-| Adham | LangGraph pipeline + Sentinel agent |
-| Walid | Maven agent + RAG system |
-| Mohamed | Healer agent + Knowledge Base |
-| Shahd | Telegram bot + Streamlit UI |
+| **Adham** | LangGraph pipeline + Sentinel agent + Milestone 3 evaluation harness + Watcher safety allowlist |
+| **Walid** | Maven agent + RAG system |
+| **Mohamed** | Healer agent + Knowledge Base |
+| **Shahd** | Telegram bot + Streamlit UI |
+
+Built at **Al Alamein University**.

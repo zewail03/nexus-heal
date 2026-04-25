@@ -22,6 +22,13 @@ from fastapi.testclient import TestClient
 from api.server import app
 from graph.pipeline import nexus_graph
 
+# These tests need the vectorstore populated and a live Groq key. The
+# Watcher unit-test file deliberately does NOT depend on either, so the
+# fixtures live in conftest.py without autouse and we opt in here.
+pytestmark = [
+    pytest.mark.usefixtures("populate_vectorstore", "require_groq_key"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Seeded alerts — four distinct runbook categories so we exercise breadth

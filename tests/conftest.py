@@ -1,10 +1,18 @@
 """
-Shared pytest fixtures for NEXUS-HEAL end-to-end tests.
+Shared pytest fixtures for NEXUS-HEAL.
 
-The vectorstore must be ingested exactly once per test session — the full
-pipeline needs it populated before any retrieval. Skip the whole suite if
-GROQ_API_KEY is missing so the test run fails loudly rather than silently
-asking Groq with no auth.
+Two layers of tests live in this directory:
+
+  * `test_watcher.py` — deterministic unit tests for the Watcher
+    safety allowlist + subprocess pass. No Groq, no ChromaDB. Runs
+    in CI on every push.
+  * `test_e2e.py` — end-to-end pipeline tests via FastAPI TestClient.
+    Drives the real Groq API and needs the ChromaDB populated.
+
+The fixtures below are NOT autouse — they are explicitly opted into
+by `test_e2e.py` via a module-level `pytestmark`. That way the Watcher
+tests can run in CI without a Groq key, and the heavyweight setup only
+happens for tests that actually need it.
 """
 from __future__ import annotations
 
@@ -20,18 +28,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _populate_vectorstore() -> None:
-    """Ingest the 10 runbooks into ChromaDB once before any test runs."""
+@pytest.fixture(scope="session")
+def populate_vectorstore() -> None:
+    """Ingest the 10 runbooks into ChromaDB once for the test session."""
     from rag.vectorstore import setup_vectorstore
     setup_vectorstore()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _require_groq_key() -> None:
-    """End-to-end tests drive real LLM calls — fail fast if the key is absent."""
+@pytest.fixture(scope="session")
+def require_groq_key() -> None:
+    """Skip e2e tests if no Groq key is configured."""
     if not os.getenv("GROQ_API_KEY"):
         pytest.skip(
-            "GROQ_API_KEY not set — the end-to-end smoke test needs live "
-            "Groq access. Populate .env and re-run."
+            "GROQ_API_KEY not set — end-to-end tests need live Groq access. "
+            "Populate .env and re-run, or run only the deterministic "
+            "Watcher tests with `pytest tests/test_watcher.py`."
         )
