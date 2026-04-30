@@ -195,13 +195,6 @@ python -m pytest tests/ -v
 
 ---
 
-## Team
 
-| Member | Component |
-|---|---|
-| **Adham** | LangGraph pipeline + Sentinel agent + Milestone 3 evaluation harness + Watcher safety allowlist |
-| **Walid** | Maven agent + RAG system |
-| **Mohamed** | Healer agent + Knowledge Base |
-| **Shahd** | Telegram bot + Streamlit UI |
 
 Built at **Al Alamein University**.
