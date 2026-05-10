@@ -12,6 +12,7 @@ ui/components.py. This file owns layout and orchestration only.
 """
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
@@ -22,7 +23,10 @@ from ui import components as cx
 from ui.styles import inject as inject_theme
 
 
-FASTAPI_URL = "http://127.0.0.1:8000"
+# In single-container deployments (e.g. Render) the FastAPI process runs
+# alongside Streamlit on the loopback interface. NEXUS_API_URL lets the
+# deployer override this for split-service or remote-API setups.
+FASTAPI_URL = os.getenv("NEXUS_API_URL", "http://127.0.0.1:8000")
 
 
 # ---------------------------------------------------------------------------

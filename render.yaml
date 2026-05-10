@@ -1,0 +1,64 @@
+# Render Blueprint — NEXUS-HEAL
+#
+# One web service running both FastAPI (loopback :8000) and Streamlit
+# (public on $PORT). The launcher in start.sh boots FastAPI in the
+# background, waits for /health, then exec's Streamlit in the foreground
+# so Render's process supervisor keeps the service alive correctly.
+#
+# Setup
+# -----
+# 1. Push this repo to GitHub (already done if you're reading this).
+# 2. https://dashboard.render.com → New → Blueprint → connect repo.
+# 3. Render auto-reads this file. Set GROQ_API_KEY in the dashboard
+#    (it's marked sync:false so it stays out of git).
+# 4. Optionally set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID for the bot.
+# 5. Click Deploy. First build takes ~3-5 min (pip install + ChromaDB
+#    cold-ingest of 26 runbooks). Subsequent deploys are faster.
+#
+# Notes
+# -----
+# - Free tier sleeps after 15 min idle; first hit afterwards is a ~10-15 s
+#   cold start (rebuilds ChromaDB from /tmp). Hit the URL once before
+#   your demo to warm it up.
+# - CHROMA_PATH and NEXUS_DB_PATH live under /tmp because Render's free
+#   tier does NOT include persistent disks. ChromaDB rebuilds idempotently
+#   on every cold start; the alert store is ephemeral within a session.
+# - For long-term persistence (alerts surviving sleeps), upgrade to a
+#   paid plan and add a `disk:` block mounting at /var/data, then point
+#   CHROMA_PATH and NEXUS_DB_PATH there.
+
+services:
+  - type: web
+    name: nexus-heal
+    runtime: python
+    plan: free
+    region: oregon                  # change to frankfurt / singapore if closer
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    healthCheckPath: /              # Streamlit serves the dashboard at /
+    autoDeploy: true                # redeploy on every push to main
+
+    envVars:
+      # --- Secrets (set these in the Render dashboard, not in git) ---
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false                 # optional — bot is skipped if unset
+      - key: TELEGRAM_CHAT_ID
+        sync: false                 # optional
+
+      # --- Wiring (read by config.py / ui/app.py / start.sh) ---
+      - key: FASTAPI_HOST
+        value: 127.0.0.1            # internal-only; Streamlit talks to it
+      - key: FASTAPI_PORT
+        value: "8000"
+      - key: NEXUS_API_URL
+        value: http://127.0.0.1:8000
+      - key: CHROMA_PATH
+        value: /tmp/chroma_db       # free-tier ephemeral; rebuilds idempotently
+      - key: NEXUS_DB_PATH
+        value: /tmp/nexus_alerts.db
+
+      # --- Runtime ---
+      - key: PYTHON_VERSION
+        value: "3.13.0"

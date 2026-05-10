@@ -71,6 +71,10 @@ Open **http://localhost:8501** for the dashboard, or message the Telegram bot:
 - `/demo` — run a built-in CPU-spike alert
 - `/alert <text>` — run a custom alert
 
+**Deploy to a public URL** (Render.com, free tier): click `New + → Blueprint`,
+point it at the repo, set `GROQ_API_KEY` as a secret, click Deploy.
+Step-by-step in [`docs/deploy.md`](docs/deploy.md).
+
 ---
 
 ## Milestone 3 highlights
@@ -144,6 +148,7 @@ groundedness from 15 % to 60 % on the binary judge. Full story in
 | [`docs/milestone3_report.md`](docs/milestone3_report.md) | Full milestone report (planned vs delivered, retrieval quality, reliability, correctness, future work) |
 | [`docs/milestone3_matrix.md`](docs/milestone3_matrix.md) | Planned vs delivered matrix — 11/11 M2, 10/10 M3, zero partial |
 | [`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md) | Final-milestone deliverable — RRF fusion of BM25 + dense, before/after numbers, per-query case studies |
+| [`docs/deploy.md`](docs/deploy.md) | One-click deployment to Render.com — free tier, public URL, auto-deploys on push |
 | [`docs/reliability_findings.md`](docs/reliability_findings.md) | Prompt-leak bug story — caught by the LLM-as-judge groundedness check |
 | [`docs/demo_script.md`](docs/demo_script.md) | 3-minute click-by-click demo walkthrough |
 | [`eval/results/design_choices.md`](eval/results/design_choices.md) | Embedding + chunk + overlap choice with full sweep evidence |
