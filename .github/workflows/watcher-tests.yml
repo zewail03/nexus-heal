@@ -1,9 +1,18 @@
-name: Watcher tests
+name: Deterministic tests
 
-# Runs the deterministic Watcher safety-allowlist tests on every push to
-# main and on every PR. These do NOT require a Groq key — they exercise
-# the classifier and subprocess plumbing only. The full e2e suite needs
-# a live Groq token and is not run in CI.
+# Runs the full deterministic test suite on every push to main and on
+# every PR. This covers:
+#   - tests/test_watcher.py        (30 safety-allowlist + behaviour tests)
+#   - tests/test_storage.py        (12 SQLite AlertStore tests)
+#   - tests/test_hybrid_retriever.py (13 hybrid + query-rewriter tests)
+#
+# Total: 55 deterministic tests, ~30 s wall clock. None of these require
+# Groq access — the e2e suite (tests/test_e2e.py) needs a live Groq token
+# and is run locally / in pre-release validation, not CI.
+#
+# Filename is kept as `watcher-tests.yml` so the README badge URL stays
+# stable; the workflow's display name has been updated to reflect the
+# expanded scope.
 
 on:
   push:
@@ -14,7 +23,7 @@ on:
 
 jobs:
   test:
-    name: Watcher unit tests (Python ${{ matrix.python-version }})
+    name: Deterministic tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,12 +39,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install minimal test deps
-        # The Watcher tests don't need chromadb / langgraph / fastapi —
-        # they cover agents/watcher.py and agents/state.py only.
+      - name: Install project dependencies
+        # The hybrid retriever tests need chromadb + rank_bm25; the
+        # query-rewriter import touches langchain_groq even though the
+        # tests stub the LLM. Installing requirements.txt covers all
+        # three deterministic test files in one shot.
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install -r requirements.txt
 
-      - name: Run Watcher unit tests
-        run: python -m pytest tests/test_watcher.py -v
+      - name: Run deterministic tests
+        run: |
+          python -m pytest \
+            tests/test_watcher.py \
+            tests/test_storage.py \
+            tests/test_hybrid_retriever.py \
+            -v

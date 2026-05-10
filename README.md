@@ -7,11 +7,11 @@
 A multi-agent self-healing infrastructure agent — Sentinel → Maven → Healer → Watcher,
 running on LangGraph, Groq Llama 3.3, ChromaDB, FastAPI, Streamlit, Telegram, and n8n.
 
-[![Watcher tests](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml/badge.svg)](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml)
+[![Tests](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml/badge.svg)](https://github.com/zewail03/nexus-heal/actions/workflows/watcher-tests.yml)
 ![Python](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)
 ![LLM](https://img.shields.io/badge/LLM-Groq%20%E2%80%A2%20Llama%203.3%2070B-F55036)
 ![RAG](https://img.shields.io/badge/RAG-ChromaDB%20%2B%20MiniLM-46AC93)
-![License](https://img.shields.io/badge/license-academic-blue)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
 
