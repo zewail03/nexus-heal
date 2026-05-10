@@ -28,13 +28,20 @@ COPY . .
 
 # Sensible defaults for HF Spaces. The host platform's $PORT overrides
 # this at runtime; the rest can be overridden via Space "Variables".
+#
+# PYTHONPATH=/app is required: Streamlit's runner adds /app/ui (the
+# script's directory) to sys.path but not /app, so `from ui import
+# components` inside app.py fails without an explicit project-root
+# entry on the path. Local dev works because the user's interactive
+# shell adds CWD by default; container runtime doesn't.
 ENV PORT=7860 \
     NEXUS_API_URL=http://127.0.0.1:8000 \
     FASTAPI_HOST=127.0.0.1 \
     FASTAPI_PORT=8000 \
     CHROMA_PATH=/tmp/chroma_db \
     NEXUS_DB_PATH=/tmp/nexus_alerts.db \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
 EXPOSE 7860
 
