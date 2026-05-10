@@ -1,8 +1,13 @@
 # Deploying NEXUS-HEAL to Render.com (free tier)
 
-The simplest path to a permanent hosted URL. ~10 minutes of clicking, ~5
-minutes of waiting for the first build, then auto-deploys on every
-`git push` to `main`.
+The simplest path to a permanent hosted URL **if you have a credit/debit
+card to verify your identity** (Render does a $1 pre-authorization at
+signup — refunded automatically, not charged, but a card is required
+on file). ~10 minutes of clicking, ~5 minutes of waiting for the first
+build, then auto-deploys on every `git push` to `main`.
+
+**Don't have a card?** Use [Hugging Face Spaces](deploy_hf.md) instead —
+no card, more RAM, no idle sleep. Same `Dockerfile`, different platform.
 
 ## What you'll get
 

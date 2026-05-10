@@ -71,9 +71,9 @@ Open **http://localhost:8501** for the dashboard, or message the Telegram bot:
 - `/demo` — run a built-in CPU-spike alert
 - `/alert <text>` — run a custom alert
 
-**Deploy to a public URL** (Render.com, free tier): click `New + → Blueprint`,
-point it at the repo, set `GROQ_API_KEY` as a secret, click Deploy.
-Step-by-step in [`docs/deploy.md`](docs/deploy.md).
+**Deploy to a public URL** — two free options, both single-container:
+- **Hugging Face Spaces** (no card, 16 GB RAM, always-on) — [`docs/deploy_hf.md`](docs/deploy_hf.md)
+- **Render.com** (card pre-auth required, 512 MB RAM, sleeps on idle) — [`docs/deploy.md`](docs/deploy.md)
 
 ---
 
@@ -148,7 +148,8 @@ groundedness from 15 % to 60 % on the binary judge. Full story in
 | [`docs/milestone3_report.md`](docs/milestone3_report.md) | Full milestone report (planned vs delivered, retrieval quality, reliability, correctness, future work) |
 | [`docs/milestone3_matrix.md`](docs/milestone3_matrix.md) | Planned vs delivered matrix — 11/11 M2, 10/10 M3, zero partial |
 | [`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md) | Final-milestone deliverable — RRF fusion of BM25 + dense, before/after numbers, per-query case studies |
-| [`docs/deploy.md`](docs/deploy.md) | One-click deployment to Render.com — free tier, public URL, auto-deploys on push |
+| [`docs/deploy.md`](docs/deploy.md) | One-click deployment to Render.com — free tier (requires a card pre-auth), public URL, auto-deploys on push |
+| [`docs/deploy_hf.md`](docs/deploy_hf.md) | Card-free deployment to Hugging Face Spaces — 16 GB RAM, always-on, free |
 | [`docs/reliability_findings.md`](docs/reliability_findings.md) | Prompt-leak bug story — caught by the LLM-as-judge groundedness check |
 | [`docs/demo_script.md`](docs/demo_script.md) | 3-minute click-by-click demo walkthrough |
 | [`eval/results/design_choices.md`](eval/results/design_choices.md) | Embedding + chunk + overlap choice with full sweep evidence |
