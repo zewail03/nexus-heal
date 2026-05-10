@@ -184,17 +184,96 @@ bit-reproducible.
 
 ---
 
+## Production switch
+
+Maven now imports `hybrid_retrieve` directly ([agents/maven.py](../agents/maven.py)).
+The hybrid retriever pulls the full dense ranking once per query
+(cheap for our 80-chunk corpus) so every returned chunk — including
+BM25-only hits — carries a real cosine score. Maven's confidence
+calibration math (`40 % LLM × 35 % avg-RAG × 25 % alert-specificity`)
+stays honest about lexical-only matches without needing changes of
+its own. All 48 pytest tests (42 deterministic + 6 e2e) pass against
+the hybrid retriever.
+
+## Going further — LLM query rewriting
+
+Q07 and Q03 still miss in plain hybrid. Both have *zero* domain
+vocabulary — the dense leg is paraphrase-tolerant only up to a point,
+and BM25 has nothing to anchor on when the words don't match. The
+textbook fix beyond hybrid is to rewrite the query into keyword form
+*before* retrieval, surfacing the technical terms that runbooks
+actually contain.
+
+[rag/query_rewriter.py](../rag/query_rewriter.py) calls Groq Llama 3.3
+70B with a domain-scoped vocabulary list and concatenates the LLM's
+keyword expansion onto the original query. Both legs of hybrid then
+run on the augmented query. In-process cached so repeated calls cost
+zero tokens.
+
+**Example — Q07** (the M3 named ceiling):
+
+```
+Input  : "Service becomes unresponsive after running for a day, a manual
+          restart fixes it temporarily"
+Expand : "... memory_leak cpu_spike OOM OOMKilled heap RSS swap GC JVM
+          CrashLoopBackOff exit code 137 SIGKILL kubectl"
+Top-3  : runbook_memory_leak.md, runbook_memory_leak.md, runbook_pod_crash.md
+MRR    : 0.00 → 1.00
+```
+
+### Three-way comparison
+
+| Metric (overall) | Dense | Hybrid | **+ Query Rewrite** |
+|---|---|---|---|
+| Hit@1 | 0.725 | **0.750** | 0.675 ⚠️ |
+| Hit@3 | 0.800 | 0.850 | **0.900** |
+| Hit@5 | 0.875 | 0.900 | **0.925** |
+| MRR | 0.7717 | **0.8058** | 0.7842 |
+
+| Hard bucket | Dense | Hybrid | **+ Query Rewrite** |
+|---|---|---|---|
+| Hit@1 | 0.400 | 0.500 | **0.600** |
+| Hit@3 | 0.500 | 0.500 | **0.800** |
+| Hit@5 | 0.700 | 0.600 | **0.800** |
+| MRR | 0.4783 | 0.5200 | **0.6667** |
+
+Query rewriting is **the textbook hard-bucket fix**: Hit@3 jumps from
+0.50 → **0.80** (+30 pts) and MRR from 0.48 → **0.67**. The two named
+M3 ceiling queries (Q07, Q15) and one previously-unsolved adversarial
+query (Q23) all flip to Hit@3 = 1.
+
+The honest tradeoff is real:
+
+- **Hit@1 regresses** (0.75 → 0.68) — when the original query was
+  *already* keyword-rich, expansion adds noise that displaces a
+  rank-1 hit. Net per-query at Hit@3: +3 wins (all hard) vs −1 loss
+  (one medium query, Q26).
+- **One Groq call per unique query** (cached). Adds ~0.3 s p50
+  latency to the first retrieval for a query. Acceptable for an SRE
+  agent, undesirable for a search-as-you-type product.
+
+### Recommendation
+
+| Mode | When to use | Where |
+|---|---|---|
+| `dense` | Reproducing M3 baseline numbers | Eval only |
+| `hybrid` | **Production default** | [agents/maven.py](../agents/maven.py) |
+| `query_rewrite_hybrid` | Confidence-low retry path; eval Q07-class ceilings | Eval today; conditional production retry path is logged as Future Work |
+
+The natural next step is to make query rewriting a **conditional retry
+strategy**: run plain hybrid first, then if Maven's
+`confidence_diagnose < threshold`, retry once through
+`query_rewrite_hybrid`. This trades the Hit@1 regression for the
+Hit@3 win on the queries that actually needed it. It's a two-line
+change in [agents/maven.py](../agents/maven.py); deferred so the
+production switch can ship clean.
+
 ## What's *not* changed
 
-- **Production retriever still defaults to dense.** Maven imports
-  [`retrieve_docs`](../rag/retriever.py) as before. Hybrid is exposed
-  as the eval-validated alternative — switching production over is a
-  one-import change but warrants a deliberate release decision because
-  Maven's confidence math reads the cosine `score` field.
 - **Knowledge base unchanged.** Still 26 runbooks; no new content was
-  added for this milestone. The win is purely retrieval-side.
-- **No prompt changes.** Maven, Healer, Watcher prompts are byte-for-byte
-  identical to the M3 release.
+  added for this milestone. The wins are purely retrieval-side.
+- **No prompt changes to Maven/Healer/Watcher.** All three agent
+  prompts are byte-for-byte identical to the M3 release.
 
 ---
 

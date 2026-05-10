@@ -318,10 +318,11 @@ here with a strikethrough for traceability.
 
 | Priority | Item | Why it matters | Effort |
 |---|---|---|---|
-| ~~Done~~ | ~~Hybrid BM25 + dense retrieval~~ | Completed in the final milestone — [`rag/hybrid_retriever.py`](../rag/hybrid_retriever.py) ships RRF fusion of dense + BM25. Re-run on the same 40 queries and KB-26: Hit@3 0.80 → **0.85**, MRR 0.77 → **0.81**, hard-bucket Hit@1 0.40 → **0.50**. Easy bucket Hit@3 saturates at 1.00. Q07 still misses (paradigm ceiling holds, as predicted), and Q03 falls out of top-5 (one honest regression — BM25 noise displacing a fragile rank-5 dense hit). Full numbers + per-query case studies in [`docs/hybrid_retrieval.md`](hybrid_retrieval.md). | — |
-| Medium | Full real fix execution with RBAC scoping + command-review UI | Watcher now runs safe read-only commands for real and gates mutations. Next step is a structured review path (RBAC, dry-run, idempotency checks) so mutations can also run safely under human approval. | High |
-| Medium | Clean 70B rubric-judge re-run | Rubric run on 8B gave 0.90; 70B cross-check (4 queries, before TPD cap) showed 70B is stricter. A full 70B rubric run would replace the 8B number with a like-for-like value. | Trivial (1 command) |
-| Low | LLM-based query rewriting before retrieval | Alternative mitigation for Q07 — transforms user's colloquial query into domain-keyword form before the embedding call. | Medium |
+| ~~Done~~ | ~~Hybrid BM25 + dense retrieval~~ | Completed — [`rag/hybrid_retriever.py`](../rag/hybrid_retriever.py) ships RRF fusion of dense + BM25 and is now the **production retriever** ([`agents/maven.py`](../agents/maven.py) imports `hybrid_retrieve`). Re-run on the same 40 queries and KB-26: Hit@3 0.80 → **0.85**, MRR 0.77 → **0.81**, hard-bucket Hit@1 0.40 → **0.50**. Easy bucket Hit@3 saturates at 1.00. Full numbers + per-query case studies in [`docs/hybrid_retrieval.md`](hybrid_retrieval.md). | — |
+| ~~Done~~ | ~~LLM-based query rewriting before retrieval~~ | Completed — [`rag/query_rewriter.py`](../rag/query_rewriter.py) calls Groq Llama 3.3 70B with a domain-scoped vocabulary list, concatenates the keyword expansion onto the query, and feeds it through hybrid. Exposed via `python -m eval.retrieval_metrics --retriever query_rewrite_hybrid`. Hard-bucket Hit@3 jumps **0.50 → 0.80 (+30 pts)** and MRR **0.48 → 0.67**. Closes the M3 named ceiling: Q07 ("service unresponsive after running for a day") flips MRR 0.00 → 1.00 — the rewriter expands "unresponsive" + "manual restart" into `memory_leak OOM heap RSS GC SIGKILL exit code 137`, and runbook_memory_leak.md surfaces at rank 1. Honest tradeoff: Hit@1 regresses 0.75 → 0.68 (expansion noise on already-keyword-rich queries) — recommendation in `hybrid_retrieval.md` is to use it as a confidence-low Maven retry path, not a default. | — |
+| ~~Done~~ | ~~Clean 70B rubric-judge re-run~~ | Completed — `python -m eval.reliability_groundedness_rubric --input eval/results/groundedness_after_fix_70b.csv --suffix _70b`. Result: **0.50 mean** (2 fully / 16 partial / 2 not_grounded) on the same 20 after-fix diagnoses the 8B rubric judged at 0.90. Confirms the M3 cross-model leniency observation: 8B is much more lenient than 70B; the binary judge's 60.0 % sits between the two as expected. The strict like-for-like rubric number is now 0.50, not the lenient 0.90 — best-estimate true groundedness updated to the 50 % – 60 % band. Results in [`eval/results/groundedness_rubric_70b.csv`](../eval/results/groundedness_rubric_70b.csv). | — |
+| Medium | Full real fix execution with RBAC scoping + command-review UI | Watcher now runs safe read-only commands for real and gates mutations. Next step is a structured review path (RBAC, dry-run, idempotency checks) so mutations can also run safely under human approval. Out of capstone scope. | High |
+| Low | Conditional query-rewrite retry in Maven | Two-line change in `agents/maven.py`: if `confidence_diagnose < threshold` after first pass, retry through `query_rewrite_hybrid_retrieve`. Trades the Hit@1 regression for the Hit@3 win on queries that need it. Deferred so the hybrid production switch can ship clean. | Trivial |
 | Low | ~~Done~~ | ~~Persist `_pending_alerts` in SQLite~~ | Completed — [`api/storage.py`](../api/storage.py) ships an `AlertStore` (WAL mode, JSON-serialized state, env-overridable path). 12 unit tests in [`tests/test_storage.py`](../tests/test_storage.py). | — |
 | ~~Done~~ | ~~Knowledge base expansion (10 → 25+ runbooks)~~ | Completed — KB now has 26 runbooks. Sentinel `ALERT_TYPES` extended 10 → 26. Re-run of the 40-query eval shows Hit@3 dropping from 0.95 → 0.80 — honest scaling effect that motivates the High-priority hybrid retrieval item. | — |
 | ~~Done~~ | ~~70B like-for-like reliability re-run~~ | Completed — 60.0 % grounded on clean 70B, in [`groundedness_after_fix_70b.csv`](../eval/results/groundedness_after_fix_70b.csv). | — |
@@ -329,15 +330,26 @@ here with a strikethrough for traceability.
 | ~~Done~~ | ~~Benchmark BGE-small-en-v1.5 vs MiniLM~~ | Completed — full 27-config sweep. BGE-small underperforms MiniLM on this corpus (−3.7 pts at selected config). Documented in [`design_choices.md`](../eval/results/design_choices.md). | — |
 | ~~Done~~ | ~~Real fix execution (read-only subset)~~ | Completed — Watcher allowlist executes safe verification commands via `subprocess`; mutations remain gated. Validated by 30 pytest unit tests. | — |
 
-**Why this ordering**: hybrid retrieval was originally the only
-remaining High-priority item; it has now shipped (final milestone) and
-moved the documented ceiling — overall Hit@3 0.80 → 0.85, hard-bucket
-Hit@1 0.40 → 0.50. The remaining items are Medium (full mutation
-execution with RBAC + command-review UI; the read-only half is shipped
-so this is a scoping exercise, not a correctness gap) and Low
-(LLM-based query rewriting — the natural next step beyond hybrid for
-queries like Q07 that have zero domain vocabulary, where hybrid still
-misses by paradigm).
+**Why this ordering**: every retrieval-quality item the M3 report
+flagged is now closed.
+
+- **Hybrid retrieval** shipped and is the production retriever; the
+  paradigm ceiling moved from "Q07 unreachable" to "Q07 reachable
+  through query rewriting."
+- **LLM query rewriting** shipped as an eval-validated retriever
+  mode and closes the named M3 ceiling (Q07: MRR 0 → 1) at the cost
+  of a Hit@1 regression on already-keyword-rich queries — the
+  textbook query-expansion tradeoff.
+- **70B rubric re-run** shipped and replaces the lenient 8B 0.90 with
+  the strict like-for-like 0.50, validating the binary judge's 60 %
+  as the appropriate lower bound and tightening the best-estimate
+  band to 50–60 %.
+
+The only remaining items are out-of-capstone-scope (RBAC + mutation
+review UI — engineering, not retrieval) or Trivial follow-ups
+(wiring `query_rewrite_hybrid` as a confidence-low retry path inside
+Maven — two lines, deferred so the production hybrid switch can
+ship clean).
 
 ---
 

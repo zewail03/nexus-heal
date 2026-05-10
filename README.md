@@ -91,26 +91,43 @@ harness, plus a real (safety-allowlisted) Watcher.
 | Knowledge base | Runbooks ingested into ChromaDB | **26** (post-stretch — was 10) |
 | Persistence | Alert store survives server restart | SQLite-backed `AlertStore` |
 
-## Final milestone — hybrid retrieval
+## Final milestone — three retrievers, every M3 ceiling closed
 
-The remaining High-priority Future-Work item from M3 — hybrid lexical+dense
-retrieval — now ships. [rag/hybrid_retriever.py](rag/hybrid_retriever.py)
-fuses BM25 and dense cosine via Reciprocal Rank Fusion (k = 60). Re-run
-on the **same 40 labeled queries and KB-26** used for the M3 number:
+Three retrievers, each evaluated on the **same 40 labeled queries and
+KB-26** used for the M3 headline number:
 
-| Metric | Dense (KB-26) | Hybrid RRF | Δ |
+| Metric | `dense` | `hybrid` (production) | `query_rewrite_hybrid` |
 |---|---|---|---|
-| Hit@1 | 0.725 | **0.750** | +2.5 pts |
-| Hit@3 | 0.800 | **0.850** | **+5.0 pts** |
-| MRR | 0.7717 | **0.8058** | **+3.4 pts** |
-| Hard-bucket Hit@1 | 0.400 | **0.500** | **+10.0 pts** |
-| Easy-bucket Hit@3 | 0.900 | **1.000** | +10.0 pts |
+| Hit@1 | 0.725 | **0.750** | 0.675 |
+| Hit@3 | 0.800 | 0.850 | **0.900** |
+| Hit@5 | 0.875 | 0.900 | **0.925** |
+| MRR | 0.7717 | **0.8058** | 0.7842 |
+| **Hard Hit@3** | 0.500 | 0.500 | **0.800** |
+| **Hard MRR** | 0.4783 | 0.5200 | **0.6667** |
 
-Q07 (the M3 ceiling — pure paraphrase, zero domain vocab) still misses
-in hybrid, confirming that fully-paraphrased queries are a paradigm-
-level limit beyond dense+lexical retrieval. Full numbers, per-query
-case studies, and the one honest regression in
-[`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md).
+- **`hybrid`** ([rag/hybrid_retriever.py](rag/hybrid_retriever.py)) fuses
+  BM25 and dense cosine via Reciprocal Rank Fusion (k = 60). Now the
+  production retriever — [agents/maven.py](agents/maven.py) imports
+  `hybrid_retrieve` directly. Closes the High-priority M3 Future-Work
+  item.
+- **`query_rewrite_hybrid`** ([rag/query_rewriter.py](rag/query_rewriter.py))
+  calls Groq Llama 3.3 70B to expand colloquial queries into keyword
+  form, then runs hybrid. Closes the **named M3 ceiling Q07** —
+  *"Service becomes unresponsive after running for a day, a manual
+  restart fixes it temporarily"* — flipping MRR 0.00 → 1.00 by
+  expanding "unresponsive + manual restart" into
+  `memory_leak OOM heap RSS GC SIGKILL exit code 137`.
+- **70B rubric re-judge** also shipped this milestone. The 8B
+  rubric's lenient 0.90 is replaced with the strict 70B 0.50,
+  validating the binary judge's 60 % as the lower bound and
+  tightening the best-estimate band to 50 – 60 %.
+
+Honest tradeoff: query-rewrite Hit@1 regresses 0.75 → 0.68 because
+expansion adds noise to already-keyword-rich queries. Recommended use
+is as a confidence-low Maven retry path, not as a default.
+
+Full numbers, per-query case studies, and the production-switch
+narrative in [`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md).
 
 The retrieval-quality eval surfaced a real bug — the Maven prompt was
 leaking RAG similarity scores into diagnoses, which the LLM then

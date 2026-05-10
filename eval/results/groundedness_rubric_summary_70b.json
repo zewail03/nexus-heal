@@ -1,0 +1,40 @@
+{
+  "num_judged": 20,
+  "runs_per_query": 3,
+  "model": "llama-3.3-70b-versatile",
+  "rubric_mean_score_0_to_1": 0.5,
+  "rubric_mean_pct": 50.0,
+  "grade_counts": {
+    "partial": 16,
+    "fully": 2,
+    "not_grounded": 2
+  },
+  "pct_fully": 10.0,
+  "pct_partial": 80.0,
+  "pct_not_grounded": 10.0,
+  "by_difficulty": {
+    "easy": {
+      "mean_score": 0.5,
+      "n": 5
+    },
+    "medium": {
+      "mean_score": 0.7,
+      "n": 5
+    },
+    "hard": {
+      "mean_score": 0.3,
+      "n": 5
+    },
+    "composite": {
+      "mean_score": 0.5,
+      "n": 5
+    }
+  },
+  "previous_binary_pct_grounded": 60.0,
+  "top_unsupported_claims": [
+    "The alert indicates a high CPU usage of 98% on the production api-gateway, which could be causing thread pool exhaustion or resource starvation",
+    "object retention, connection leaks, event listener leaks, buffer accumulation, and JVM heap misconfiguration",
+    "The root cause is likely log file growth"
+  ],
+  "wall_clock_seconds": 134.1
+}

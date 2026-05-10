@@ -200,10 +200,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--retriever",
-        choices=["dense", "hybrid"],
+        choices=["dense", "hybrid", "query_rewrite_hybrid"],
         default="dense",
-        help="Retriever to evaluate. 'dense' (default) uses ChromaDB cosine alone; "
-             "'hybrid' fuses dense and BM25 via Reciprocal Rank Fusion.",
+        help="Retriever to evaluate. 'dense' uses ChromaDB cosine alone; "
+             "'hybrid' fuses dense and BM25 via Reciprocal Rank Fusion; "
+             "'query_rewrite_hybrid' adds an LLM-based keyword expansion before fusion "
+             "(costs one Groq call per unique query, cached in-process).",
     )
     args = parser.parse_args()
 
@@ -214,6 +216,9 @@ def main() -> None:
     if args.retriever == "hybrid":
         from rag.hybrid_retriever import hybrid_retrieve
         retrieve_fn: RetrieveFn = hybrid_retrieve
+    elif args.retriever == "query_rewrite_hybrid":
+        from rag.hybrid_retriever import query_rewrite_hybrid_retrieve
+        retrieve_fn = query_rewrite_hybrid_retrieve
     else:
         retrieve_fn = retrieve_docs
 
