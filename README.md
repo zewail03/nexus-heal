@@ -91,6 +91,27 @@ harness, plus a real (safety-allowlisted) Watcher.
 | Knowledge base | Runbooks ingested into ChromaDB | **26** (post-stretch — was 10) |
 | Persistence | Alert store survives server restart | SQLite-backed `AlertStore` |
 
+## Final milestone — hybrid retrieval
+
+The remaining High-priority Future-Work item from M3 — hybrid lexical+dense
+retrieval — now ships. [rag/hybrid_retriever.py](rag/hybrid_retriever.py)
+fuses BM25 and dense cosine via Reciprocal Rank Fusion (k = 60). Re-run
+on the **same 40 labeled queries and KB-26** used for the M3 number:
+
+| Metric | Dense (KB-26) | Hybrid RRF | Δ |
+|---|---|---|---|
+| Hit@1 | 0.725 | **0.750** | +2.5 pts |
+| Hit@3 | 0.800 | **0.850** | **+5.0 pts** |
+| MRR | 0.7717 | **0.8058** | **+3.4 pts** |
+| Hard-bucket Hit@1 | 0.400 | **0.500** | **+10.0 pts** |
+| Easy-bucket Hit@3 | 0.900 | **1.000** | +10.0 pts |
+
+Q07 (the M3 ceiling — pure paraphrase, zero domain vocab) still misses
+in hybrid, confirming that fully-paraphrased queries are a paradigm-
+level limit beyond dense+lexical retrieval. Full numbers, per-query
+case studies, and the one honest regression in
+[`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md).
+
 The retrieval-quality eval surfaced a real bug — the Maven prompt was
 leaking RAG similarity scores into diagnoses, which the LLM then
 quoted as if they were clinical evidence. A two-line fix took
@@ -105,6 +126,7 @@ groundedness from 15 % to 60 % on the binary judge. Full story in
 |---|---|
 | [`docs/milestone3_report.md`](docs/milestone3_report.md) | Full milestone report (planned vs delivered, retrieval quality, reliability, correctness, future work) |
 | [`docs/milestone3_matrix.md`](docs/milestone3_matrix.md) | Planned vs delivered matrix — 11/11 M2, 10/10 M3, zero partial |
+| [`docs/hybrid_retrieval.md`](docs/hybrid_retrieval.md) | Final-milestone deliverable — RRF fusion of BM25 + dense, before/after numbers, per-query case studies |
 | [`docs/reliability_findings.md`](docs/reliability_findings.md) | Prompt-leak bug story — caught by the LLM-as-judge groundedness check |
 | [`docs/demo_script.md`](docs/demo_script.md) | 3-minute click-by-click demo walkthrough |
 | [`eval/results/design_choices.md`](eval/results/design_choices.md) | Embedding + chunk + overlap choice with full sweep evidence |

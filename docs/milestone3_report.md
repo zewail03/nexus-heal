@@ -318,7 +318,7 @@ here with a strikethrough for traceability.
 
 | Priority | Item | Why it matters | Effort |
 |---|---|---|---|
-| High | Hybrid BM25 + dense retrieval | Only remaining high-impact item. Q07-class queries (no domain keywords) have Hit@5 = 0 in **all 27 sweep configs, including BGE-small** — the ceiling is the paradigm, not the model. Hybrid lexical+dense is the textbook fix. | Medium |
+| ~~Done~~ | ~~Hybrid BM25 + dense retrieval~~ | Completed in the final milestone — [`rag/hybrid_retriever.py`](../rag/hybrid_retriever.py) ships RRF fusion of dense + BM25. Re-run on the same 40 queries and KB-26: Hit@3 0.80 → **0.85**, MRR 0.77 → **0.81**, hard-bucket Hit@1 0.40 → **0.50**. Easy bucket Hit@3 saturates at 1.00. Q07 still misses (paradigm ceiling holds, as predicted), and Q03 falls out of top-5 (one honest regression — BM25 noise displacing a fragile rank-5 dense hit). Full numbers + per-query case studies in [`docs/hybrid_retrieval.md`](hybrid_retrieval.md). | — |
 | Medium | Full real fix execution with RBAC scoping + command-review UI | Watcher now runs safe read-only commands for real and gates mutations. Next step is a structured review path (RBAC, dry-run, idempotency checks) so mutations can also run safely under human approval. | High |
 | Medium | Clean 70B rubric-judge re-run | Rubric run on 8B gave 0.90; 70B cross-check (4 queries, before TPD cap) showed 70B is stricter. A full 70B rubric run would replace the 8B number with a like-for-like value. | Trivial (1 command) |
 | Low | LLM-based query rewriting before retrieval | Alternative mitigation for Q07 — transforms user's colloquial query into domain-keyword form before the embedding call. | Medium |
@@ -329,12 +329,15 @@ here with a strikethrough for traceability.
 | ~~Done~~ | ~~Benchmark BGE-small-en-v1.5 vs MiniLM~~ | Completed — full 27-config sweep. BGE-small underperforms MiniLM on this corpus (−3.7 pts at selected config). Documented in [`design_choices.md`](../eval/results/design_choices.md). | — |
 | ~~Done~~ | ~~Real fix execution (read-only subset)~~ | Completed — Watcher allowlist executes safe verification commands via `subprocess`; mutations remain gated. Validated by 30 pytest unit tests. | — |
 
-**Why this ordering**: hybrid retrieval is now the *only* remaining
-High-priority item — it unlocks the single biggest quality ceiling
-this milestone documented (Q07 and the hard bucket). Full mutation
-execution with RBAC drops to Medium because the read-only half is now
-shipped and a human-review path is a scoping exercise rather than a
-correctness gap.
+**Why this ordering**: hybrid retrieval was originally the only
+remaining High-priority item; it has now shipped (final milestone) and
+moved the documented ceiling — overall Hit@3 0.80 → 0.85, hard-bucket
+Hit@1 0.40 → 0.50. The remaining items are Medium (full mutation
+execution with RBAC + command-review UI; the read-only half is shipped
+so this is a scoping exercise, not a correctness gap) and Low
+(LLM-based query rewriting — the natural next step beyond hybrid for
+queries like Q07 that have zero domain vocabulary, where hybrid still
+misses by paradigm).
 
 ---
 

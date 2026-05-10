@@ -44,6 +44,11 @@ if str(ROOT) not in sys.path:
 from rag.retriever import retrieve_docs  # noqa: E402
 from rag.vectorstore import setup_vectorstore  # noqa: E402
 
+# Type alias: any callable with the retrieve_docs signature.
+from typing import Callable  # noqa: E402
+
+RetrieveFn = Callable[..., list[dict]]
+
 
 EVAL_DIR = Path(__file__).resolve().parent
 QUERIES_PATH = EVAL_DIR / "labeled_queries.json"
@@ -106,14 +111,18 @@ def ndcg_at_k(retrieved_sources: list[str], relevant: set[str], k: int) -> float
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def evaluate(queries: list[dict], top_k: int = max(K_VALUES)) -> tuple[list[dict], dict]:
+def evaluate(
+    queries: list[dict],
+    top_k: int = max(K_VALUES),
+    retrieve_fn: RetrieveFn = retrieve_docs,
+) -> tuple[list[dict], dict]:
     """Run every labeled query and return (per-query rows, aggregate summary)."""
     per_query_rows: list[dict] = []
     agg: dict[str, list[float]] = defaultdict(list)
     by_difficulty: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
     for q in queries:
-        docs = retrieve_docs(query=q["query"], alert_type=q["alert_type"], top_k=top_k)
+        docs = retrieve_fn(query=q["query"], alert_type=q["alert_type"], top_k=top_k)
         retrieved_sources = [d.get("source", "") for d in docs]
         relevant = set(q["relevant_runbooks"])
 
@@ -189,19 +198,36 @@ def main() -> None:
         help="Output filename prefix under eval/results/ (e.g. 'baseline' or 'final'). "
              "Writes <name>_metrics.csv and <name>_summary.json.",
     )
+    parser.add_argument(
+        "--retriever",
+        choices=["dense", "hybrid"],
+        default="dense",
+        help="Retriever to evaluate. 'dense' (default) uses ChromaDB cosine alone; "
+             "'hybrid' fuses dense and BM25 via Reciprocal Rank Fusion.",
+    )
     args = parser.parse_args()
 
     # Make sure the vectorstore exists / is populated
     print("[eval] Ensuring ChromaDB is populated...")
     setup_vectorstore()
 
+    if args.retriever == "hybrid":
+        from rag.hybrid_retriever import hybrid_retrieve
+        retrieve_fn: RetrieveFn = hybrid_retrieve
+    else:
+        retrieve_fn = retrieve_docs
+
     print(f"[eval] Loading queries from {QUERIES_PATH.name}")
     with QUERIES_PATH.open(encoding="utf-8") as f:
         data = json.load(f)
     queries = data["queries"]
 
-    print(f"[eval] Running retrieval for {len(queries)} queries (top_k={max(K_VALUES)})...")
-    rows, summary = evaluate(queries, top_k=max(K_VALUES))
+    print(
+        f"[eval] Running retrieval for {len(queries)} queries "
+        f"(top_k={max(K_VALUES)}, retriever={args.retriever})..."
+    )
+    rows, summary = evaluate(queries, top_k=max(K_VALUES), retrieve_fn=retrieve_fn)
+    summary["retriever"] = args.retriever
 
     csv_path = RESULTS_DIR / f"{args.name}_metrics.csv"
     json_path = RESULTS_DIR / f"{args.name}_summary.json"

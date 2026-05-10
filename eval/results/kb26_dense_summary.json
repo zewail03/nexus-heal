@@ -1,0 +1,46 @@
+{
+  "num_queries": 40,
+  "top_k_evaluated": 5,
+  "overall": {
+    "hit@1": 0.725,
+    "precision@1": 0.725,
+    "recall@1": 0.675,
+    "ndcg@1": 0.725,
+    "hit@3": 0.8,
+    "precision@3": 0.5667,
+    "recall@3": 0.775,
+    "ndcg@3": 0.7464,
+    "hit@5": 0.875,
+    "precision@5": 0.4354,
+    "recall@5": 0.85,
+    "ndcg@5": 0.7776,
+    "mrr": 0.7717
+  },
+  "by_difficulty": {
+    "easy": {
+      "hit@1": 0.8,
+      "hit@3": 0.9,
+      "hit@5": 0.9,
+      "mrr": 0.85
+    },
+    "medium": {
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0
+    },
+    "hard": {
+      "hit@1": 0.4,
+      "hit@3": 0.5,
+      "hit@5": 0.7,
+      "mrr": 0.4783
+    },
+    "composite": {
+      "hit@1": 0.7,
+      "hit@3": 0.8,
+      "hit@5": 0.9,
+      "mrr": 0.7583
+    }
+  },
+  "retriever": "dense"
+}

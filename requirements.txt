@@ -16,6 +16,9 @@ plotly>=5.20.0
 streamlit-extras>=0.4.0
 streamlit-lottie>=0.0.5
 
+# Hybrid retrieval (BM25 + dense fusion). Pure-Python, no native deps.
+rank_bm25>=0.2.2
+
 # OPTIONAL — only needed if you want to re-run the embedding-comparison
 # arm of eval/sweep.py (sentence-transformers / BGE-small). Pulls torch
 # (~2 GB), so kept commented for the production install path.

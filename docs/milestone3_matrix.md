@@ -35,6 +35,12 @@ Legend: ✅ delivered · ⚠️ partial / delivered with caveat · ❌ not deliv
 | Maven prompt-leak fix | ✅ | [agents/maven.py](../agents/maven.py) | Reliability check surfaced it; 2-line prompt fix applied and re-measured. 15 % → 58.82 % groundedness. Documented in [reliability_findings.md](reliability_findings.md). |
 | Reliability re-verification on 70B | ✅ | [eval/results/groundedness_after_fix_70b.csv](../eval/results/groundedness_after_fix_70b.csv), [eval/results/context_relevance_after_fix_70b.csv](../eval/results/context_relevance_after_fix_70b.csv) | Clean 70B after-fix run completed after TPD reset. Groundedness 60.0 % (20/20 judged), context relevance 0.7758 / 91.67 %. The 8B cross-model check (58.82 %) lands within 1.2 points of the 70B result, validating both. |
 
+## Final-milestone — hybrid retrieval
+
+| Final-milestone deliverable | Delivered? | Evidence / file | Notes |
+|---|---|---|---|
+| Hybrid BM25 + dense retrieval (RRF fusion) | ✅ | [rag/hybrid_retriever.py](../rag/hybrid_retriever.py), [eval/results/kb26_hybrid_metrics.csv](../eval/results/kb26_hybrid_metrics.csv), [docs/hybrid_retrieval.md](hybrid_retrieval.md) | Reciprocal Rank Fusion (k=60) over the existing ChromaDB collection plus a lazily-built BM25Okapi index. Re-run on the same 40-query labeled set and KB-26: overall Hit@3 0.80 → **0.85**, MRR 0.7717 → **0.8058**, hard-bucket Hit@1 0.40 → **0.50**, easy-bucket Hit@3 saturates at **1.00**, composite Hit@5 → **1.00**. Q07 still misses (paradigm ceiling holds — even hybrid cannot help when the query has zero domain vocabulary), and Q03 has one honest regression on Hit@5 (BM25 noise displacing a fragile rank-5 dense hit). `rank_bm25` added to [requirements.txt](../requirements.txt) — pure Python, ~9 KB wheel, no native deps. `--retriever {dense,hybrid}` flag added to [eval/retrieval_metrics.py](../eval/retrieval_metrics.py) for reproducibility. |
+
 ## Summary
 
 - **11 / 11 Milestone 2 rows fully delivered (`✅`).** `Fix execution with rollback` was previously `⚠️ partial` (simulated); Option B shipped safe real execution behind a read-only allowlist. Mutation commands are still gated for safety, but the Watcher now runs real subprocess calls — `validation_result` contains actual `df -h` output, not a hard-coded success string.
@@ -46,3 +52,4 @@ Legend: ✅ delivered · ⚠️ partial / delivered with caveat · ❌ not deliv
   - **M3-stretch**: SQLite-backed `AlertStore` so Mission Control survives a server restart (12 storage tests)
   - **M3-stretch**: Streamlit UI overhaul — dark neon theme, animated agent pipeline, radial confidence gauge, terminal-style Watcher log
 - **Zero `⚠️ partial` rows. Zero `❌ not delivered` rows.**
+- **Final milestone**: hybrid retrieval shipped (RRF fusion of BM25 + dense), the only remaining High-priority Future-Work item from M3. Hit@3 0.80 → 0.85, MRR 0.77 → 0.81, hard-bucket Hit@1 0.40 → 0.50 on the same 40-query set. Full numbers in [hybrid_retrieval.md](hybrid_retrieval.md).
