@@ -1,6 +1,6 @@
 import json
 from langchain_groq import ChatGroq
-from rag.hybrid_retriever import hybrid_retrieve as retrieve_docs
+from rag.hybrid_retriever import hybrid_retrieve, query_rewrite_hybrid_retrieve
 from agents.state import NexusState
 from config import GROQ_API_KEY, LLM_MODEL, LLM_TEMPERATURE, RAG_TOP_K
 
@@ -14,9 +14,23 @@ def maven_agent(state: NexusState) -> dict:
 
     Input:  alert_type, alert_raw, alert_severity
     Output: retrieved_docs, diagnosis, root_cause, confidence_diagnose, similar_incidents
+
+    Retrieval strategy:
+        - First pass (iteration_count == 0): plain hybrid (BM25 + dense
+          via RRF). Cheap — no extra LLM call.
+        - Retry pass (iteration_count >= 1, fired by the should_retry
+          edge in graph/pipeline.py when the previous diagnosis came in
+          below MIN_CONFIDENCE_THRESHOLD): query-rewrite hybrid. Pays
+          one Groq call to expand the query into keyword form, which on
+          our 40-query eval lifts hard-bucket Hit@3 0.50 → 0.80 (+30 pts)
+          and closes the M3 named ceiling Q07. We don't pay this cost
+          on every alert because the same eval shows query rewriting
+          regresses Hit@1 on already-keyword-rich queries (0.75 → 0.68)
+          — full numbers in docs/hybrid_retrieval.md.
     """
-    # Step 1: RAG retrieval
-    docs = retrieve_docs(
+    iteration = state.get("iteration_count", 0)
+    retrieve_fn = query_rewrite_hybrid_retrieve if iteration > 0 else hybrid_retrieve
+    docs = retrieve_fn(
         query=state["alert_raw"],
         alert_type=state["alert_type"],
         top_k=RAG_TOP_K,
