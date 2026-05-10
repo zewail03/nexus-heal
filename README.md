@@ -1,3 +1,15 @@
+---
+title: NEXUS-HEAL
+emoji: 🛡️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+short_description: Multi-agent self-healing infra agent — LangGraph + Groq + ChromaDB
+---
+
 <div align="center">
 
 # 🛡️  NEXUS-HEAL
