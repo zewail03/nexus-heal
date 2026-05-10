@@ -18,22 +18,8 @@
         "method": "POST",
         "url": "http://localhost:8000/analyze",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "alert_id",
-              "value": "={{ $json.alert_id }}"
-            },
-            {
-              "name": "alert_text",
-              "value": "={{ $json.alert_text }}"
-            },
-            {
-              "name": "source",
-              "value": "n8n"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ alert_id: ($json.body && $json.body.alert_id) || $json.alert_id || ('N8N-' + Date.now()), alert_text: ($json.body && $json.body.alert_text) || $json.alert_text || '', source: 'n8n' }) }}",
         "options": {}
       },
       "id": "http-request",
@@ -45,7 +31,7 @@
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=\ud83d\udea8 *NEXUS-HEAL Alert*\n\n*Type:* {{ $json.alert_type }}\n*Severity:* {{ $json.severity }}\n*Root Cause:* {{ $json.root_cause }}\n*Confidence:* {{ Math.round($json.confidence * 100) }}%\n\n*Diagnosis:*\n{{ $json.diagnosis }}\n\n*Fix Plan:*\n{{ $json.fix_plan.join('\\n') }}",
+        "text": "=\ud83d\udea8 *NEXUS-HEAL Alert*\n\n*Type:* `{{ $json.alert_type }}`\n*Severity:* `{{ $json.severity }}`\n*Confidence:* `{{ Math.round(($json.confidence || 0) * 100) }}%`\n\n*Root Cause:*\n{{ $json.root_cause }}\n\n*Diagnosis:*\n{{ $json.diagnosis }}\n\n*Fix Plan:*\n{{ ($json.fix_plan || []).map((s, i) => (i+1) + '. ' + s).join('\\n') }}\n\n*Estimated Time:* {{ $json.estimated_time || 'n/a' }}",
         "additionalFields": {
           "parse_mode": "Markdown"
         }

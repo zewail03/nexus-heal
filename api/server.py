@@ -1,3 +1,6 @@
+import time
+import uuid
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -40,8 +43,14 @@ async def analyze_alert(request: AlertRequest):
     # Lazy import to avoid circular import at module level
     from graph.pipeline import nexus_graph
 
+    # Misconfigured clients (e.g. an n8n HTTP node with the wrong body
+    # template) sometimes POST with an empty alert_id. Don't fail — assign
+    # a deterministic synthetic ID so the alert still lands on the
+    # dashboard with a visible label.
+    alert_id = request.alert_id.strip() or f"AUTO-{int(time.time())}-{uuid.uuid4().hex[:6]}"
+
     initial_state = {
-        "alert_id": request.alert_id,
+        "alert_id": alert_id,
         "alert_raw": request.alert_text,
         "alert_severity": "",
         "alert_type": "",
@@ -68,7 +77,7 @@ async def analyze_alert(request: AlertRequest):
     result = nexus_graph.invoke(initial_state)
 
     # Persist the full state for later approval / dashboard rendering.
-    _pending_alerts.put(request.alert_id, result)
+    _pending_alerts.put(alert_id, result)
 
     return DiagnosisResponse(
         alert_id=result["alert_id"],
