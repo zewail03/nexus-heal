@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
-short_description: Multi-agent self-healing infra agent — LangGraph + Groq + ChromaDB
+short_description: Multi-agent self-healing infrastructure agent
 ---
 
 <div align="center">
