@@ -209,8 +209,16 @@ def page_submit_alert() -> None:
         "📦 Pod crash":     "payment-service pod in CrashLoopBackOff, exit code 137, restart count at 12",
     }
 
-    if "alert_text" not in st.session_state:
-        st.session_state.alert_text = ""
+    # Initialise the textarea's own widget key once. The widget owns its
+    # state via `key="alert_text_input"` from here on.
+    if "alert_text_input" not in st.session_state:
+        st.session_state.alert_text_input = ""
+
+    # Callbacks run BEFORE the next render so they can legally modify
+    # widget state — unlike click handlers in the main render flow.
+    def _apply_preset(preset_text: str) -> None:
+        st.session_state.alert_text_input = preset_text
+        st.session_state.auto_run = True
 
     cols = st.columns([3, 2])
     with cols[0]:
@@ -220,7 +228,6 @@ def page_submit_alert() -> None:
         )
         alert_text = st.text_area(
             "alert text",
-            value=st.session_state.alert_text,
             placeholder="e.g. CPU usage 98% on api-gateway-prod, OOM killer active",
             height=130,
             label_visibility="collapsed",
@@ -233,17 +240,24 @@ def page_submit_alert() -> None:
             unsafe_allow_html=True,
         )
         for label, text in demo_alerts.items():
-            if st.button(label, key=f"preset_{label}", use_container_width=True):
-                st.session_state.alert_text = text
-                st.rerun()
+            st.button(
+                label,
+                key=f"preset_{label}",
+                use_container_width=True,
+                on_click=_apply_preset,
+                args=(text,),
+            )
 
     run = st.button("▶  Analyze alert", type="primary", disabled=not alert_text)
+
+    # If a preset was just clicked, auto-fire the analysis on this rerun.
+    auto_run = st.session_state.pop("auto_run", False)
 
     # -- Execution -----------------------------------------------------------
     pipeline_slot = st.empty()
     pipeline_slot.markdown("", unsafe_allow_html=True)
 
-    if run and alert_text:
+    if (run or auto_run) and alert_text:
         # Animate pipeline stages — each step takes a tiny moment of UI lag,
         # then the real /analyze call replaces it with the final state.
         for active_idx, key in enumerate(["sentinel", "maven", "healer", "watcher"]):

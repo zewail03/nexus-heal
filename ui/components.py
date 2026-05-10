@@ -234,24 +234,29 @@ def alert_card(alert_id: str, data: dict) -> None:
     status = data.get("status") or "pending"
     root_cause = data.get("root_cause") or "(no diagnosis)"
     body = html.escape(root_cause[:160] + ("…" if len(root_cause) > 160 else ""))
-    st.markdown(
-        f"""<div class="nx-card" style="margin-bottom: 0.9rem">
-            <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
-                <div style="font-size:0.75rem; color: var(--nx-text-dim); letter-spacing: 0.14em; text-transform: uppercase;">
-                    {html.escape(alert_id)}
-                </div>
-                <div style="display:flex; gap: 0.4rem;">
-                    {severity_badge(severity)}
-                    {status_badge(status)}
-                </div>
-            </div>
-            <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.2rem;">
-                {html.escape(alert_type)} <span style="color: var(--nx-text-dim); font-weight: 400; font-size: 0.85rem;">— confidence {int(confidence*100)}%</span>
-            </div>
-            <div style="color: var(--nx-text-dim); font-size: 0.88rem; line-height: 1.45;">{body}</div>
-        </div>""",
-        unsafe_allow_html=True,
+    # NOTE: leading whitespace on each line would make Streamlit's markdown
+    # parser treat the HTML as a code block. Keep this as one logical line
+    # (or call textwrap.dedent) so the card renders, not the raw markup.
+    markup = (
+        f'<div class="nx-card" style="margin-bottom: 0.9rem">'
+        f'<div style="display:flex; justify-content: space-between; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">'
+        f'<div style="font-size:0.75rem; color: var(--nx-text-dim); letter-spacing: 0.14em; text-transform: uppercase;">'
+        f'{html.escape(alert_id)}'
+        f'</div>'
+        f'<div style="display:flex; gap: 0.4rem;">'
+        f'{severity_badge(severity)}'
+        f'{status_badge(status)}'
+        f'</div>'
+        f'</div>'
+        f'<div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.2rem;">'
+        f'{html.escape(alert_type)} '
+        f'<span style="color: var(--nx-text-dim); font-weight: 400; font-size: 0.85rem;">'
+        f'— confidence {int(confidence*100)}%</span>'
+        f'</div>'
+        f'<div style="color: var(--nx-text-dim); font-size: 0.88rem; line-height: 1.45;">{body}</div>'
+        f'</div>'
     )
+    st.markdown(markup, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------

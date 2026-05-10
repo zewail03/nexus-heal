@@ -70,6 +70,52 @@ html, body, [data-testid="stAppViewContainer"] *:not(code):not(pre) {
     color: var(--nx-text);
 }
 
+/* Streamlit uses Material Symbols icons for chevrons / sidebar collapse /
+   status pills. The font is fetched from Google Fonts at runtime; when
+   that fetch fails (offline, corp proxy, blocked CDN) the ligature can't
+   resolve and the literal icon name leaks as text — e.g.
+   "keyboard_double_arrow_right" overlapping the expander label.
+   Hide these icon containers entirely; they are decorative, the app
+   functions identically without them. */
+[class*="material-symbols"],
+[class*="material-icons"],
+[class*="MaterialIcons"],
+[data-testid="stIconMaterial"],
+[data-testid="stExpanderIcon"],
+[data-testid="stMarkdownContainer"] [class*="material-symbols"],
+[data-testid="stExpander"] svg + span,
+[data-testid="stExpander"] span[class*="symbols"],
+.material-symbols-outlined,
+.material-symbols-rounded,
+.material-symbols-sharp,
+.material-icons,
+.material-icons-outlined,
+.material-icons-round,
+span[class*="symbols"],
+span[class*="Icon"],
+i[class*="material"] {
+    display: none !important;
+    font-size: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    visibility: hidden !important;
+    text-indent: -99999px !important;
+    overflow: hidden !important;
+    color: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Defensive — any element whose visible text starts with the leaked
+   icon-name pattern (lowercase + underscores like "keyboard_double_*")
+   gets pushed off-screen. Catches anything the class selectors miss. */
+[data-testid="stExpander"] summary > span:first-child:not(:has(*)) {
+    text-indent: -99999px !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    display: inline-block !important;
+}
+
 h1, h2, h3, h4 {
     letter-spacing: -0.01em;
     font-weight: 700 !important;
