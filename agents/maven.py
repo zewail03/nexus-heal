@@ -1,6 +1,6 @@
 import json
 from langchain_groq import ChatGroq
-from rag.retriever import retrieve_docs
+from rag.hybrid_retriever import hybrid_retrieve as retrieve_docs
 from agents.state import NexusState
 from config import GROQ_API_KEY, LLM_MODEL, LLM_TEMPERATURE, RAG_TOP_K
 

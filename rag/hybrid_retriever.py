@@ -97,48 +97,43 @@ def hybrid_retrieve(
         top_k:      Number of fused results to return.
         fusion_k:   RRF constant. 60 is the industry-standard default
                     (Cormack et al., 2009); larger k flattens the curve.
-        pool:       Per-leg candidate pool depth. Defaults to 4×top_k
-                    (min 20) so RRF has overlap to score.
+        pool:       Per-leg candidate pool depth — only the top `pool`
+                    ranks from each leg participate in RRF. Defaults to
+                    4×top_k (min 20).
 
     Returns:
         List of dicts with the same fields as `retrieve_docs` plus a
-        `fusion_score` (the RRF total).
+        `fusion_score` (the RRF total). Every returned chunk has a real
+        cosine `score` — BM25-only hits are backfilled from the full
+        dense ranking so Maven's confidence math stays honest.
     """
     pool = pool or max(top_k * 4, 20)
-
-    dense_hits = _dense_retrieve(query=query, alert_type=alert_type, top_k=pool)
-    dense_rank: dict[str, int] = {d["doc_id"]: rank for rank, d in enumerate(dense_hits)}
-    by_id: dict[str, dict] = {d["doc_id"]: d for d in dense_hits}
 
     cache = _build_bm25()
     bm25 = cache["bm25"]
     ids = cache["ids"]
-    docs = cache["documents"]
-    metas = cache["metadatas"]
-    bm25_scores = bm25.get_scores(_tokenize(query))
+    n_chunks = len(ids)
 
+    # Pull cosine for every chunk in one query. With ~80 chunks this is
+    # essentially free, and it means BM25-only hits get a real cosine
+    # score in the output (not the 0.0 placeholder that the previous
+    # implementation surfaced). The fusion ranks themselves still cap at
+    # the top `pool` per leg, so the RRF math is unchanged.
+    dense_full = _dense_retrieve(query=query, alert_type=alert_type, top_k=n_chunks)
+    by_id_full: dict[str, dict] = {d["doc_id"]: d for d in dense_full}
+    dense_rank: dict[str, int] = {
+        d["doc_id"]: rank for rank, d in enumerate(dense_full[:pool])
+    }
+
+    bm25_scores = bm25.get_scores(_tokenize(query))
     if bm25_scores.size == 0 or not bool(bm25_scores.any()):
         # Query had no tokens that appear in any chunk. Skip BM25 cleanly
         # rather than letting RRF silently inject a uniform rank for every
         # doc (which would dilute the dense signal).
         bm25_rank: dict[str, int] = {}
     else:
-        order = sorted(range(len(ids)), key=lambda i: bm25_scores[i], reverse=True)[:pool]
+        order = sorted(range(n_chunks), key=lambda i: bm25_scores[i], reverse=True)[:pool]
         bm25_rank = {ids[i]: rank for rank, i in enumerate(order)}
-        for i in order:
-            doc_id = ids[i]
-            if doc_id not in by_id:
-                meta = metas[i] or {}
-                by_id[doc_id] = {
-                    "doc_id": doc_id,
-                    "content": docs[i],
-                    # No cosine score for BM25-only hits — surface 0.0
-                    # rather than fabricate a number. Maven's confidence
-                    # math reads `score`, so a 0.0 keeps it honest.
-                    "score": 0.0,
-                    "source": meta.get("source", "unknown"),
-                    "alert_type": meta.get("alert_type", "unknown"),
-                }
 
     fused: dict[str, float] = {}
     for doc_id, rank in dense_rank.items():
@@ -152,7 +147,36 @@ def hybrid_retrieve(
     sorted_ids = sorted(fused.keys(), key=lambda d: fused[d], reverse=True)[:top_k]
     out: list[dict] = []
     for doc_id in sorted_ids:
-        d = dict(by_id[doc_id])
+        # by_id_full has every chunk because dense_full pulled the whole
+        # collection above — no fabricated 0.0 cosine for BM25-only hits.
+        d = dict(by_id_full[doc_id])
         d["fusion_score"] = round(fused[doc_id], 6)
         out.append(d)
     return out
+
+
+def query_rewrite_hybrid_retrieve(
+    query: str,
+    alert_type: str = "",
+    top_k: int = 3,
+    fusion_k: int = 60,
+    pool: Optional[int] = None,
+) -> list[dict]:
+    """
+    Hybrid retrieval with LLM-based query rewriting.
+
+    Calls `rewrite_query` to expand the input into keyword-rich form,
+    then runs the standard hybrid pipeline. Same return shape as
+    `hybrid_retrieve`. Costs one Groq call per *unique* query (cached).
+    """
+    # Lazy import — eval-only path; no LLM dependency for default hybrid.
+    from rag.query_rewriter import rewrite_query
+
+    expanded = rewrite_query(query)
+    return hybrid_retrieve(
+        query=expanded,
+        alert_type=alert_type,
+        top_k=top_k,
+        fusion_k=fusion_k,
+        pool=pool,
+    )
